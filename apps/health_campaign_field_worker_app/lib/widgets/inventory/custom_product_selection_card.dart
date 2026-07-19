@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import 'package:transit_post/data/repositories/local/user_action.dart';
 
+import '../../data/services/server_summary_report_service.dart';
 import '../../models/entities/roles_type.dart';
 import '../../utils/stock_calculation_utils.dart';
 import '../../utils/utils.dart';
@@ -297,8 +298,7 @@ class _ProductSelectionCardState extends LocalizedState<ProductSelectionCard> {
         }
       }
     } catch (e) {
-      debugPrint(
-          'ProductSelectionCard: Error loading UserAction balances: $e');
+      debugPrint('ProductSelectionCard: Error loading UserAction balances: $e');
     }
 
     return balances;
@@ -449,10 +449,14 @@ class _ProductSelectionCardState extends LocalizedState<ProductSelectionCard> {
           ValidationRule(
             type: 'max',
             value: min(maxValue, 10000000),
-            message: maxValue >10000000 ? localizations.translate('QUANTITY_CANNOT_EXCEED_STOCK_MAX_LIMIT_VALUE') :maxValue > 0
-                 ?  localizations.translate('QUANTITY_CANNOT_EXCEED_STOCK_IN_HAND_VALUE')
-                .replaceAll('{maxValue}', maxValue.toString())
-                : localizations.translate("NO_STOCK_AVAILABLE_IN_HAND"),
+            message: maxValue > 10000000
+                ? localizations
+                    .translate('QUANTITY_CANNOT_EXCEED_STOCK_MAX_LIMIT_VALUE')
+                : maxValue > 0
+                    ? localizations
+                        .translate('QUANTITY_CANNOT_EXCEED_STOCK_IN_HAND_VALUE')
+                        .replaceAll('{maxValue}', maxValue.toString())
+                    : localizations.translate("NO_STOCK_AVAILABLE_IN_HAND"),
           ),
         ];
 
