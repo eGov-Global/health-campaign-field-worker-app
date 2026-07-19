@@ -3089,6 +3089,16 @@ class _HomePageState extends LocalizedState<HomePage> {
           context.router.push(const TransitPostWrapperRoute());
         }),
       )),
+
+      i18.home.summaryReportLabel: homeShowcaseData.summaryReport.buildWith(
+        child: HomeItemCard(
+          icon: Icons.summarize,
+          label: i18.home.summaryReportLabel,
+          onPressed: () {
+            context.router.push(const SummaryReportRoute());
+          },
+        ),
+      ),
     };
 
     final Map<String, GlobalKey> homeItemsShowcaseMap = {
@@ -3105,6 +3115,7 @@ class _HomePageState extends LocalizedState<HomePage> {
           homeShowcaseData.distributorFileComplaint.showcaseKey,
       i18.home.syncDataLabel: homeShowcaseData.distributorSyncData.showcaseKey,
       i18.home.viewReportsLabel: homeShowcaseData.inventoryReport.showcaseKey,
+      i18.home.summaryReportLabel: homeShowcaseData.summaryReport.showcaseKey,
       i18.home.beneficiaryReferralLabel:
           homeShowcaseData.hfBeneficiaryReferral.showcaseKey,
       i18.home.manageAttendanceLabel:
@@ -3143,6 +3154,7 @@ class _HomePageState extends LocalizedState<HomePage> {
       i18.home.fileComplaint,
       i18.home.syncDataLabel,
       i18.home.viewReportsLabel,
+      i18.home.summaryReportLabel,
       i18.home.beneficiaryReferralLabel,
       i18.home.manageAttendanceLabel,
       i18.home.dashboard,
@@ -3168,6 +3180,17 @@ class _HomePageState extends LocalizedState<HomePage> {
         .where((f) => f != i18.home.db && homeItemsShowcaseMap.containsKey(f))
         .map((label) => homeItemsShowcaseMap[label]!)
         .toList();
+
+    final userRoleCodes = state.userModel.roles.map((e) => e.code).toList();
+    final isDistributor =
+        userRoleCodes.contains(RolesType.distributor.toValue());
+    if (isDistributor) {
+      if (!filteredLabels.contains(i18.home.summaryReportLabel)) {
+        filteredLabels.add(i18.home.summaryReportLabel);
+      }
+    } else {
+      filteredLabels.remove(i18.home.summaryReportLabel);
+    }
 
     if (envConfig.variables.envType == EnvType.demo && kReleaseMode) {
       filteredLabels.remove(i18.home.db);

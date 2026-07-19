@@ -31,6 +31,8 @@ const stockDetailsReturnedShowcase = StockDetailsReturnedShowcase();
 const stockReconciliationShowcase = StockReconciliationShowcase();
 const stockReconciliationMetrics = StockReconciliationMetrics();
 
+const summaryReport = SummaryReport();
+
 class Attendance {
   const Attendance();
 
@@ -241,7 +243,8 @@ class Common {
       'CORE_COMMON_INFO_DESC_INTERNET_CONNECTION';
   String get logOutWarningMsg => 'LOG_OUT_WARNING_MESSAGE';
   String get logoutConfirmationHeading => 'HCM_LOGOUT_CONFIRMATION_HEADING';
-  String get logoutConfirmationDescription => 'HCM_LOGOUT_CONFIRMATION_DESCRIPTION';
+  String get logoutConfirmationDescription =>
+      'HCM_LOGOUT_CONFIRMATION_DESCRIPTION';
 
   String get coreCommonOr => 'CORE_COMMON_OR';
   String get commentKey => 'COMMENT_KEY';
@@ -955,12 +958,44 @@ class Home {
   String get polioLqaDataCollectionLabel =>
       'HOME_POLIO_LQA_DATA_COLLECTION_LABEL';
 
-  String get polioInsideMonitoringLabel =>
-      'HOME_POLIO_INSIDE_MONITORING_LABEL';
+  String get polioInsideMonitoringLabel => 'HOME_POLIO_INSIDE_MONITORING_LABEL';
 
   String get coreCommonNoInternet => 'CORE_COMMON_NO_INTERNET';
 
   String get coreCommonSkipContinue => 'CORE_COMMON_SKIP_CONTINUE';
+
+  String get summaryReportLabel => 'HOME_SUMMARY_REPORT_LABEL';
+}
+
+class SummaryReport {
+  const SummaryReport();
+
+  String get heading => 'SUMMARY_REPORT_HEADING';
+
+  String get description => 'SUMMARY_REPORT_DESCRIPTION';
+
+  String get infoCardTitle => 'SUMMARY_REPORT_INFO_TITLE';
+
+  String get infoCardDescription => 'SUMMARY_REPORT_INFO_DESCRIPTION';
+
+  String get dateColumn => 'SUMMARY_REPORT_DATE';
+
+  String get householdsRegistered => 'SUMMARY_REPORT_HOUSEHOLDS_REGISTERED';
+
+  String get childrenTreated => 'SUMMARY_REPORT_CHILDREN_TREATED';
+
+  String get childrenTreatedPercent =>
+      'SUMMARY_REPORT_CHILDREN_TREATED_PERCENT';
+
+  String get backToHome => 'SUMMARY_REPORT_BACK_TO_HOME';
+
+  String get stockReceived => 'SUMMARY_REPORT_STOCK_RECEIVED';
+
+  String get stockConsumed => 'SUMMARY_REPORT_STOCK_CONSUMED';
+
+  String get stockReturned => 'SUMMARY_REPORT_STOCK_RETURNED';
+
+  String get stockBalance => 'SUMMARY_REPORT_STOCK_BALANCE';
 }
 
 class BeneficiaryID {
@@ -1000,11 +1035,13 @@ class BeneficiaryID {
 
   String get dataFoundBeneficiaryIds => 'DATA_FOUND_BENEFICIARY_IDS';
 
-  String get dataFoundBeneficiaryIdsContent => 'DATA_FOUND_BENEFICIARY_IDS_CONTENT';
+  String get dataFoundBeneficiaryIdsContent =>
+      'DATA_FOUND_BENEFICIARY_IDS_CONTENT';
 
   String get dataNotFoundBeneficiaryIds => 'DATA_NOT_FOUND_BENEFICIARY_IDS';
 
-  String get dataNotFoundBeneficiaryIdsContent => 'DATA_NOT_FOUND_BENEFICIARY_IDS_CONTENT';
+  String get dataNotFoundBeneficiaryIdsContent =>
+      'DATA_NOT_FOUND_BENEFICIARY_IDS_CONTENT';
 }
 
 class DataShare {
@@ -1534,7 +1571,8 @@ class BeneficiaryDetails {
 
   String get deliveryHeader => 'DELIVERY_TABLE_HEADER';
 
-  String get proceedWithoutDownloading => 'CORE_COMMON_PROCEED_WITHOUT_DOWNLOAD';
+  String get proceedWithoutDownloading =>
+      'CORE_COMMON_PROCEED_WITHOUT_DOWNLOAD';
 
   String get unableToCheckDataInServer => 'FAILED_TO_CHECK_DATA_IN_SERVER';
 
@@ -1734,8 +1772,7 @@ class FaceAuth {
   // Re-verification popup / overlay
   String get scanToProceed => 'FACE_AUTH_SCAN_TO_PROCEED';
   String get verifyToContinue => 'FACE_AUTH_VERIFY_TO_CONTINUE';
-  String get verifyToContinueWorking =>
-      'FACE_AUTH_VERIFY_TO_CONTINUE_WORKING';
+  String get verifyToContinueWorking => 'FACE_AUTH_VERIFY_TO_CONTINUE_WORKING';
   String get systemUserVerifyFirst => 'FACE_AUTH_SYSTEM_USER_VERIFY_FIRST';
   String get coWorkerVerification => 'FACE_AUTH_COWORKER_VERIFICATION';
   String get scanEachFace => 'FACE_AUTH_SCAN_EACH_FACE';
