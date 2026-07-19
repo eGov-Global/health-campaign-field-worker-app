@@ -77,6 +77,7 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
       final summaryReportService = context.read<ServerSummaryReportService>();
 
       int? serverReportTimestamp = await summaryReportService.timestamp();
+      List<String> serverReportAllDates = await summaryReportService.allDates();
 
       // Determine facility ID (same logic as stock_balance_card)
       final isDistributor = context.loggedInUserRoles
@@ -268,6 +269,7 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
         ...tasksByDate.keys,
         ...stockDates,
         ...consumedDates,
+        ...serverReportAllDates,
       };
 
       // ── Build rows ──

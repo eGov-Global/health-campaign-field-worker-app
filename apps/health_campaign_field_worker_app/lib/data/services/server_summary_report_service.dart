@@ -228,6 +228,12 @@ class ServerSummaryReportService {
     return aggregated;
   }
 
+  Future<List<String>> allDates() async {
+    final allDayData = await _readAllActiveDayData();
+    final dates = allDayData.keys.toList()..sort();
+    return dates;
+  }
+
   Future<Map<String, dynamic>?> readSummaryReportDayData({
     required String userUuid,
     required String projectId,
