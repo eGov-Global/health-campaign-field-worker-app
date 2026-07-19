@@ -48,6 +48,7 @@ import '../blocs/stock_downsync/stock_downsync.dart';
 import '../data/local_store/app_shared_preferences.dart';
 import '../data/local_store/no_sql/schema/app_configuration.dart';
 import '../data/local_store/no_sql/schema/service_registry.dart';
+import '../data/services/server_summary_report_service.dart';
 import '../data/local_store/secure_store/secure_store.dart';
 import '../models/entities/roles_type.dart';
 import '../router/app_router.dart';
@@ -209,6 +210,7 @@ class _HomePageState extends LocalizedState<HomePage> {
     });
     //// Function to set initial Data required for the packages to run
     setPackagesSingleton(context);
+    unawaited(_initializeServerSummaryReportService());
 
     // Register custom components for forms
     _registerCustomComponents();
@@ -252,6 +254,52 @@ class _HomePageState extends LocalizedState<HomePage> {
     if (value is bool) return value;
     if (value == null) return true;
     return value.toString().toLowerCase() == 'true';
+  }
+
+  Future<void> _initializeServerSummaryReportService() async {
+    try {
+      final summaryReportService = context.read<ServerSummaryReportService>();
+
+      final temp = await summaryReportService.readActiveSummaryReportData();
+
+      final userUuid = context.loggedInUserUuid;
+      final projectId = context.projectId;
+
+      final projectFacilityRepo = context.read<
+          LocalRepository<ProjectFacilityModel, ProjectFacilitySearchModel>>();
+      final projectFacilities = await projectFacilityRepo.search(
+        ProjectFacilitySearchModel(projectId: [projectId]),
+      );
+
+      final currentFacilities = projectFacilities.where((pf) {
+        final facilityLevel = pf.additionalFields?.fields
+            .where((f) => f.key == 'facilityLevel')
+            .firstOrNull
+            ?.value;
+        return facilityLevel == null || facilityLevel == 'current';
+      }).toList();
+
+      final isDistributor = context.loggedInUserRoles.any(
+        (role) => role.code == RolesType.distributor.toValue(),
+      );
+
+      final facilityId = isDistributor
+          ? userUuid
+          : (currentFacilities.firstOrNull?.facilityId ?? userUuid);
+
+      final selectedCycle = context.selectedCycle;
+
+      if (selectedCycle == null) {
+        return;
+      }
+
+      await summaryReportService.initializeForContext(
+        userUuid: userUuid,
+        projectId: projectId,
+        facilityId: facilityId,
+        currentCycle: selectedCycle,
+      );
+    } catch (_) {}
   }
 
   /// Register custom components for forms engine

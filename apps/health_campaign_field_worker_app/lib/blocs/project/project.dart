@@ -31,6 +31,8 @@ import '../../data/local_store/secure_store/secure_store.dart';
 import '../../data/remote_client.dart';
 import '../../data/repositories/remote/bandwidth_check.dart';
 import '../../data/repositories/remote/mdms.dart';
+import '../../data/repositories/summary_report_remote_repository.dart';
+import '../../data/services/server_summary_report_service.dart';
 import '../../models/entities/mdms_master_enums.dart';
 import '../../models/entities/mdms_module_enums.dart';
 import '../../models/auth/auth_model.dart';
@@ -66,6 +68,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       projectRemoteRepository;
   final LocalRepository<ProjectModel, ProjectSearchModel>
       projectLocalRepository;
+  final ServerSummaryReportService serverSummaryReportService;
 
   final RemoteRepository<AttendanceRegisterModel, AttendanceRegisterSearchModel>
       attendanceRemoteRepository;
@@ -139,6 +142,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     required this.projectRemoteRepository,
     required this.projectStaffLocalRepository,
     required this.projectLocalRepository,
+    required this.serverSummaryReportService,
     required this.projectFacilityRemoteRepository,
     required this.projectFacilityLocalRepository,
     required this.facilityRemoteRepository,
@@ -389,6 +393,74 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         .setBoundary(boundaries: findLeastLevelBoundaries(boundaries));
   }
 
+  ProjectCycle? _getCurrentCycle(List<ProjectCycle> allCycles) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    return allCycles
+        .where((cycle) => cycle.startDate <= now && cycle.endDate >= now)
+        .firstOrNull;
+  }
+
+  FutureOr<void> _loadSummaryReportData({
+    required ProjectModel project,
+    required ProjectType? selectedProjectType,
+  }) async {
+    final userObject = await localSecureStore.userRequestModel;
+    if (userObject == null) {
+      return;
+    }
+
+    final projectFacilities = await projectFacilityLocalRepository.search(
+      ProjectFacilitySearchModel(projectId: [project.id]),
+    );
+
+    List<ProjectCycle> allCycles =
+        project.additionalDetails?.projectType?.cycles ?? [];
+
+    ProjectCycle? currentCycle = _getCurrentCycle(allCycles);
+
+    final currentFacilities = projectFacilities.where((pf) {
+      final facilityLevel = pf.additionalFields?.fields
+          .where((f) => f.key == 'facilityLevel')
+          .firstOrNull
+          ?.value;
+      return facilityLevel == null || facilityLevel == 'current';
+    }).toList();
+
+    final isDistributor = context.loggedInUserRoles.any(
+      (role) => role.code == RolesType.distributor.toValue(),
+    );
+
+    final facilityId = isDistributor
+        ? userObject.uuid
+        : (currentFacilities.firstOrNull?.facilityId ?? userObject.uuid);
+
+    if (facilityId.isEmpty) {
+      return;
+    }
+
+    if (currentCycle == null) {
+      return;
+    }
+
+    final reports = await SummaryReportRemoteRepository(
+      DioClient().dio,
+      searchPath: envConfig.variables.summaryReportApiPath,
+    ).search(
+      tenantId: envConfig.variables.tenantId,
+      startDate: currentCycle.startDate,
+      endDate: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    await serverSummaryReportService.syncSummaryReports(
+      userUuid: userObject.uuid,
+      projectId: project.id,
+      facilityId: facilityId,
+      currentCycle: currentCycle,
+      reports: reports,
+    );
+  }
+
   FutureOr<void> _loadProjectFacilities(ProjectModel project) async {
     final userObject = await localSecureStore.userRequestModel;
     final assignedBoundaryType = project.address?.boundaryType;
@@ -464,8 +536,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         // Any failure falls through to the single-type default below —
         // same behaviour the old MDMS path had when it couldn't find a
         // match.
-        debugPrint(
-            'boundary-derivation from search response failed: $e');
+        debugPrint('boundary-derivation from search response failed: $e');
       }
 
       boundaryTypes ??= [assignedBoundaryType];
@@ -505,8 +576,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
           );
           await facilityLocalRepository.bulkCreate(facilities);
         } catch (e) {
-          debugPrint(
-              'facility fetch failed for chunk starting at $i: $e');
+          debugPrint('facility fetch failed for chunk starting at $i: $e');
         }
       }
     }
@@ -656,7 +726,8 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
             .whereType<String>()
             .join(',');
       }
-      debugPrint('[FaceAuth] userRoles fetched for ${rolesByUuid.length} users');
+      debugPrint(
+          '[FaceAuth] userRoles fetched for ${rolesByUuid.length} users');
 
       return individuals.map((ind) {
         final roles = ind.userUuid != null ? rolesByUuid[ind.userUuid] : null;
@@ -945,7 +1016,8 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         final formConfigs = await mdmsRepository.searchMDMS(
           envConfig.variables.mdmsApiPath,
           tenantId: envConfig.variables.tenantId,
-          schemaCode: '${ModuleEnums.hcmAdminConsole.toValue()}.${MasterEnums.formConfig.toValue()}',
+          schemaCode:
+              '${ModuleEnums.hcmAdminConsole.toValue()}.${MasterEnums.formConfig.toValue()}',
           filters: {'project': event.model.referenceID},
         );
 
@@ -1006,6 +1078,11 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         selectedProjectType?.cycles ?? [],
       );
       cycles.sort((a, b) => a.id.compareTo(b.id));
+
+      await _loadSummaryReportData(
+        project: event.model,
+        selectedProjectType: selectedProjectType,
+      );
 
       final reqProjectType = selectedProjectType?.copyWith(cycles: cycles);
 

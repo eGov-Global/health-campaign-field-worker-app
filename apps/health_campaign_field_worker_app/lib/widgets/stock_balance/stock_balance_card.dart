@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:transit_post/data/repositories/local/user_action.dart';
 
 import '../../blocs/app_initialization/app_initialization.dart';
+import '../../data/services/server_summary_report_service.dart';
 import '../../models/entities/roles_type.dart';
 import '../../utils/function_registries.dart';
 import '../../utils/i18_key_constants.dart' as i18;
@@ -386,7 +387,8 @@ class _StockBalanceCardState extends LocalizedState<StockBalanceCard> {
         // Per-commodity stock balance bars
         ..._productVariants.map((product) {
           final balance = max(_stockBalances[product.id] ?? 0.0, 0.0);
-          final color = _getColorForBalance(balance, theme.colorTheme.alert.error);
+          final color =
+              _getColorForBalance(balance, theme.colorTheme.alert.error);
           final progress =
               _maxThreshold > 0 ? min(balance / _maxThreshold, 1.0) : 0.0;
           final displayName =
