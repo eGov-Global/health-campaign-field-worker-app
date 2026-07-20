@@ -15,7 +15,6 @@ class ServerSummaryReportStorage {
   Future<void> writeSummaryReports({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required int cycleIndex,
     required List<ServerSummaryReport> reports,
   }) async {
@@ -24,7 +23,6 @@ class ServerSummaryReportStorage {
     final reportKey = _buildReportKey(
       userUuid: userUuid,
       projectId: projectId,
-      facilityId: facilityId,
       cycleIndex: cycleIndex,
     );
 
@@ -53,7 +51,6 @@ class ServerSummaryReportStorage {
   Future<Map<String, dynamic>?> readSummaryReportData({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required int cycleIndex,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -61,7 +58,6 @@ class ServerSummaryReportStorage {
     final reportKey = _buildReportKey(
       userUuid: userUuid,
       projectId: projectId,
-      facilityId: facilityId,
       cycleIndex: cycleIndex,
     );
 
@@ -101,9 +97,8 @@ class ServerSummaryReportStorage {
   String _buildReportKey({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required int cycleIndex,
   }) {
-    return '${userUuid}_${projectId}_${facilityId}_$cycleIndex';
+    return '${userUuid}_${projectId}_$cycleIndex';
   }
 }

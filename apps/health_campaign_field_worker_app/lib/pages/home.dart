@@ -296,7 +296,6 @@ class _HomePageState extends LocalizedState<HomePage> {
       await summaryReportService.initializeForContext(
         userUuid: userUuid,
         projectId: projectId,
-        facilityId: facilityId,
         currentCycle: selectedCycle,
       );
     } catch (_) {}

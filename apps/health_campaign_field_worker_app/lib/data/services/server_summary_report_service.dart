@@ -9,7 +9,6 @@ class ServerSummaryReportService {
   bool _initialized = false;
   String? _activeUserUuid;
   String? _activeProjectId;
-  String? _activeFacilityId;
   ProjectCycle? _activeCycle;
 
   ServerSummaryReportService({
@@ -44,25 +43,21 @@ class ServerSummaryReportService {
   Future<void> initializeForContext({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required ProjectCycle currentCycle,
   }) async {
     _activeUserUuid = userUuid;
     _activeProjectId = projectId;
-    _activeFacilityId = facilityId;
     _activeCycle = currentCycle;
     await initializeFromStorage();
   }
 
   String? get activeUserUuid => _activeUserUuid;
   String? get activeProjectId => _activeProjectId;
-  String? get activeFacilityId => _activeFacilityId;
   ProjectCycle? get activeCycle => _activeCycle;
 
   Future<void> syncSummaryReports({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required ProjectCycle currentCycle,
     required List<ServerSummaryReport> reports,
   }) async {
@@ -73,7 +68,6 @@ class ServerSummaryReportService {
     await storage.writeSummaryReports(
       userUuid: userUuid,
       projectId: projectId,
-      facilityId: facilityId,
       cycleIndex: currentCycle.id,
       reports: reports,
     );
@@ -84,14 +78,12 @@ class ServerSummaryReportService {
   Future<Map<String, dynamic>?> readSummaryReportData({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required int cycleIndex,
   }) async {
     await initializeFromStorage();
     return _getReportByKey(
       userUuid: userUuid,
       projectId: projectId,
-      facilityId: facilityId,
       cycleIndex: cycleIndex,
     );
   }
@@ -99,13 +91,11 @@ class ServerSummaryReportService {
   Future<int?> readSummaryReportTimestamp({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required int cycleIndex,
   }) async {
     final report = await readSummaryReportData(
       userUuid: userUuid,
       projectId: projectId,
-      facilityId: facilityId,
       cycleIndex: cycleIndex,
     );
     return _toNullableInt(report?['timeStamp']);
@@ -124,7 +114,6 @@ class ServerSummaryReportService {
 
     if (_activeUserUuid == null ||
         _activeProjectId == null ||
-        _activeFacilityId == null ||
         _activeCycle == null) {
       return null;
     }
@@ -132,7 +121,6 @@ class ServerSummaryReportService {
     return _getReportByKey(
       userUuid: _activeUserUuid!,
       projectId: _activeProjectId!,
-      facilityId: _activeFacilityId!,
       cycleIndex: _activeCycle!.id,
     );
   }
@@ -237,7 +225,6 @@ class ServerSummaryReportService {
   Future<Map<String, dynamic>?> readSummaryReportDayData({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required int cycleIndex,
     required String date,
   }) async {
@@ -245,7 +232,6 @@ class ServerSummaryReportService {
     final report = _getReportByKey(
       userUuid: userUuid,
       projectId: projectId,
-      facilityId: facilityId,
       cycleIndex: cycleIndex,
     );
 
@@ -268,20 +254,17 @@ class ServerSummaryReportService {
     _initialized = true;
     _activeUserUuid = null;
     _activeProjectId = null;
-    _activeFacilityId = null;
     _activeCycle = null;
   }
 
   Map<String, dynamic>? _getReportByKey({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required int cycleIndex,
   }) {
     final reportKey = _buildReportKey(
       userUuid: userUuid,
       projectId: projectId,
-      facilityId: facilityId,
       cycleIndex: cycleIndex,
     );
 
@@ -296,10 +279,9 @@ class ServerSummaryReportService {
   String _buildReportKey({
     required String userUuid,
     required String projectId,
-    required String facilityId,
     required int cycleIndex,
   }) {
-    return '${userUuid}_${projectId}_${facilityId}_$cycleIndex';
+    return '${userUuid}_${projectId}_$cycleIndex';
   }
 
   Future<Map<String, Map<String, dynamic>>> _readAllActiveDayData() async {
