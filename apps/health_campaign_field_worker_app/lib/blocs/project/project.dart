@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:core';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:digit_data_model/data/repositories/package_repository/local/household.dart';
 import 'package:digit_data_model/data/repositories/package_repository/remote/stock.dart';
 import 'package:digit_data_model/data_model.dart';
 import 'package:digit_data_model/models/entities/attendance_log.dart';
@@ -437,6 +438,38 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     if (facilityId.isEmpty) return;
     if (currentCycle == null) return;
 
+    // Search for household repo
+    // if household data present return else fetch from server and store in local storage
+    final householdRepo =
+        context.read<LocalRepository<HouseholdModel, HouseholdSearchModel>>()
+            as HouseholdLocalRepository;
+
+    final households = await householdRepo.search(
+      HouseholdSearchModel(),
+      userObject.uuid,
+    );
+
+    final hasHouseholdDataForCycle = households.any((household) {
+      final createdBy = household.clientAuditDetails?.createdBy ??
+          household.auditDetails?.createdBy;
+      if (createdBy != userObject.uuid) {
+        return false;
+      }
+
+      final createdTime = household.clientAuditDetails?.createdTime ??
+          household.auditDetails?.createdTime;
+      if (createdTime == null) {
+        return false;
+      }
+
+      return createdTime >= currentCycle.startDate &&
+          createdTime <= currentCycle.endDate;
+    });
+
+    if (hasHouseholdDataForCycle) {
+      return;
+    }
+
     final reports = await SummaryReportRemoteRepository(
       DioClient().dio,
       searchPath: envConfig.variables.summaryReportApiPath,
@@ -449,7 +482,6 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     await serverSummaryReportService.syncSummaryReports(
       userUuid: userObject.uuid,
       projectId: project.id,
-      facilityId: facilityId,
       currentCycle: currentCycle,
       reports: reports,
     );
