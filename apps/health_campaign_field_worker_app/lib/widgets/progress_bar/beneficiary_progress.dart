@@ -9,6 +9,8 @@ import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import '../../data/services/server_summary_report_service.dart';
 import '../../utils/utils.dart';
 import '../progress_indicator/progress_indicator.dart';
 
@@ -29,8 +31,7 @@ class BeneficiaryProgressBar extends StatefulWidget {
 class BeneficiaryProgressBarState extends State<BeneficiaryProgressBar> {
   int current = 0;
 
-
-    @override
+  @override
   void didChangeDependencies() {
     final taskRepository =
         context.read<LocalRepository<TaskModel, TaskSearchModel>>()
@@ -97,12 +98,28 @@ class BeneficiaryProgressBarState extends State<BeneficiaryProgressBar> {
           ));
 
           final allTasks = [...successTasks, ...visitedTasks];
-          List<TaskModel> results = allTasks.where((task) {
+          List<TaskModel> filteredTasks = allTasks;
+
+          final summaryReportService =
+              context.read<ServerSummaryReportService>();
+          int? serverReportTimestamp = await summaryReportService.timestamp();
+          int? serverReportChildrenTreated =
+              await summaryReportService.childrenTreated(
+            date: DateFormat('yyyy-MM-dd').format(now),
+          );
+          if (serverReportTimestamp != null) {
+            filteredTasks = filteredTasks
+                .where((e) =>
+                    e.auditDetails != null &&
+                    e.auditDetails!.lastModifiedTime >= serverReportTimestamp)
+                .toList();
+          }
+          List<TaskModel> results = filteredTasks.where((task) {
             final additionalFields = task?.additionalFields?.fields;
             if (additionalFields == null || additionalFields.isEmpty) {
               return false;
-            }
-            else return true;
+            } else
+              return true;
           }).toList();
           final uniqueBeneficiaries = results
               .map((e) => e.projectBeneficiaryClientReferenceId)
@@ -111,7 +128,8 @@ class BeneficiaryProgressBarState extends State<BeneficiaryProgressBar> {
           if (mounted) {
             setState(() {
               if (mounted) {
-                current = uniqueBeneficiaries.length;
+                current =
+                    serverReportChildrenTreated + uniqueBeneficiaries.length;
               }
             });
           }
@@ -136,16 +154,17 @@ class BeneficiaryProgressBarState extends State<BeneficiaryProgressBar> {
         // This card's own showcase wrapper adds 4px on all sides; spacer2 +
         // 4px wrapper = 12px, aligned with the home tiles' visible edge and
         // with StockBalanceCard / HFReferralProgressBar (spacer3).
-        margin: const EdgeInsets.symmetric(horizontal: spacer2, vertical: spacer1),
+        margin:
+            const EdgeInsets.symmetric(horizontal: spacer2, vertical: spacer1),
         padding: const EdgeInsets.all(spacer4),
         borderRadius: BorderRadius.circular(radius1),
         children: [
-        ProgressIndicatorContainer(
-          label: widget.label,
-          prefixLabel: '$current ${widget.prefixLabel}',
-          suffixLabel: target.toStringAsFixed(0),
-          value: target == 0 ? 0 : min(current / target, 1),
-        ),
-      ]);
+          ProgressIndicatorContainer(
+            label: widget.label,
+            prefixLabel: '$current ${widget.prefixLabel}',
+            suffixLabel: target.toStringAsFixed(0),
+            value: target == 0 ? 0 : min(current / target, 1),
+          ),
+        ]);
   }
 }
