@@ -431,17 +431,11 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       (role) => role.code == RolesType.distributor.toValue(),
     );
 
-    final facilityId = isDistributor
-        ? userObject.uuid
-        : (currentFacilities.firstOrNull?.facilityId ?? userObject.uuid);
+    if (isDistributor == false) return;
+    final facilityId = userObject.uuid;
 
-    if (facilityId.isEmpty) {
-      return;
-    }
-
-    if (currentCycle == null) {
-      return;
-    }
+    if (facilityId.isEmpty) return;
+    if (currentCycle == null) return;
 
     final reports = await SummaryReportRemoteRepository(
       DioClient().dio,
