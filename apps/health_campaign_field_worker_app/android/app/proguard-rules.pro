@@ -55,21 +55,21 @@
 # ============================================================================
 
 # Activities - name kept (manifest resolves by FQCN); internals obfuscated by R8
--keep public class com.digit.hcm.LauncherActivity
--keepclassmembers public class com.digit.hcm.LauncherActivity { *; }
--keep public class com.digit.hcm.MainActivity
--keepclassmembers class com.digit.hcm.MainActivity {
+-keep public class org.egov.gabon.LauncherActivity
+-keepclassmembers public class org.egov.gabon.LauncherActivity { *; }
+-keep public class org.egov.gabon.MainActivity
+-keepclassmembers class org.egov.gabon.MainActivity {
     public *;
 }
 
 # LocationService - name kept; internals obfuscated
--keep public class com.digit.hcm.LocationService
+-keep public class org.egov.gabon.LocationService
 
 # SecurityHelper - OBFUSCATE class and method names for maximum protection.
 # Flutter MethodChannel uses string-based dispatch (call.method), so Java method
 # names do not need to be preserved.
--keep,allowobfuscation class com.digit.hcm.SecurityHelper
--keepclassmembers,allowobfuscation class com.digit.hcm.SecurityHelper {
+-keep,allowobfuscation class org.egov.gabon.SecurityHelper
+-keepclassmembers,allowobfuscation class org.egov.gabon.SecurityHelper {
     public *;
 }
 
@@ -274,7 +274,7 @@
 
 # Add any app-specific rules below this line
 # Example: Keep your custom data models
-# -keep class com.digit.hcm.models.** { *; }
+# -keep class org.egov.gabon.models.** { *; }
 # ============================================================================
 # Critical Flutter Plugin Rules (Added to fix APK launch issues)
 # ============================================================================

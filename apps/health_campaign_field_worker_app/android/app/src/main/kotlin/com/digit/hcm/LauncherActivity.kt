@@ -1,4 +1,4 @@
-package com.digit.hcm
+package org.egov.gabon
 
 import android.app.Activity
 import android.content.Intent

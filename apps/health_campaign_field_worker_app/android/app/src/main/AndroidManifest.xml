@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.digit.hcm">
+    package="org.egov.gabon">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -42,7 +42,7 @@
         android:fullBackupContent="false"
         android:fullBackupOnly="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="HCM"
+        android:label="Gabon ITN"
         android:networkSecurityConfig="@xml/network_security_config">
         <service
             android:name=".LocationService"
