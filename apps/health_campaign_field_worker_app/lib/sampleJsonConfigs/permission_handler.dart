@@ -44,7 +44,7 @@ final dynamic permission_handler_config = {
             },
             {
               "actionType": "REQUEST_PERMISSION",
-              "properties": {"permission": "notification", "required": "true"},
+              "properties": {"permission": "notification", "required": true},
             },
             {
               "actionType": "REQUEST_PERMISSION",
@@ -55,7 +55,7 @@ final dynamic permission_handler_config = {
             },
             {
               "actionType": "REQUEST_PERMISSION",
-              "properties": {"permission": "bluetoothScan", "required": "true"}
+              "properties": {"permission": "bluetoothScan", "required": true}
             },
             {
               "actionType": "REQUEST_PERMISSION",
