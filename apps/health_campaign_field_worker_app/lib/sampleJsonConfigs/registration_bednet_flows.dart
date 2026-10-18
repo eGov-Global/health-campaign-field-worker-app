@@ -123,7 +123,11 @@ final dynamic sampleBednetFlows = {
                             "value":
                                 "{{ navigation.HouseholdClientReferenceId }}"
                           },
-                          {"key": "isEdit", "value": "true"}
+                          {"key": "isEdit", "value": "true"},
+                          {
+                            "key": "isDistributor",
+                            "value": "{{fn:hasRole('DISTRIBUTOR')}}"
+                          }
                         ],
                         "name": "HOUSEHOLD",
                         "type": "FORM"
@@ -369,42 +373,6 @@ final dynamic sampleBednetFlows = {
               },
               "schemaCode": null
             },
-            {
-              "type": "template",
-              "label": "ADD_MEMBER",
-              "format": "button",
-              "visible": "{{latestBeneficiaryId}} != ''",
-              "onAction": [
-                {
-                  "actionType": "NAVIGATION",
-                  "properties": {
-                    "data": [
-                      {
-                        "key": "HouseholdClientReferenceId",
-                        "value": "{{navigation.HouseholdClientReferenceId}}"
-                      },
-                      {
-                        "key": "UNIQUE_BENEFICIARY_ID",
-                        "value": "{{latestBeneficiaryId}}"
-                      }
-                    ],
-                    "name": "ADD_MEMBER",
-                    "type": "FORM"
-                  }
-                }
-              ],
-              "fieldName": "addMemberButton",
-              "properties": {
-                "size": "medium",
-                "type": "tertiary",
-                "align": "center",
-                "topGap": 12,
-                "bottomGap": 12,
-                "prefixIcon": "AddCircle",
-                "mainAxisSize": "min",
-                "mainAxisAlignment": "center"
-              }
-            }
           ],
           "fieldName": "overviewLabelPairCard",
           "properties": {"type": "primary", "cardType": "primary"},
@@ -417,8 +385,67 @@ final dynamic sampleBednetFlows = {
         {
           "type": "template",
           "label": "DELIVERY",
+          "format": "actionPopup",
+          "visible":
+              "{{fn:hasRole('DISTRIBUTOR')}} == true && {{fn:checkAllDoseDelivered(task)}} == false && {{fn:canRecordDelivery(contextData.0.nextCycleId)}} == true && {{fn:hasStockForDelivery(contextData.0.eligibleProductVariants)}} == false",
+          "fieldName": "insufficientStockPopUp",
+          "properties": {
+            "icon": "Warning",
+            "size": "large",
+            "type": "primary",
+            "suffixIcon": null,
+            "popupConfig": {
+              "body": [
+                {
+                  "type": "template",
+                  "value": "{{fn:getInsufficientStockMessage()}}",
+                  "format": "textTemplate",
+                  "fieldName": "insufficientStockMessageText",
+                  "properties": {
+                    "replaceAll": [
+                      {"searchValue": "::", "replaceValue": "\n"}
+                    ],
+                    "separatedBy": "::"
+                  }
+                }
+              ],
+              "type": "default",
+              "title": "INSUFFICIENT_STOCK_TITLE",
+              "titleIcon": "Warning",
+              "footerActions": [
+                {
+                  "type": "template",
+                  "label": "GO_BACK",
+                  "format": "button",
+                  "onAction": [
+                    {
+                      "actionType": "CLOSE_POPUP",
+                      "properties": {"parentScreenKey": "householdOverview"}
+                    }
+                  ],
+                  "fieldName": "closePopUp",
+                  "properties": {
+                    "size": "large",
+                    "type": "primary",
+                    "mainAxisSize": "max"
+                  }
+                }
+              ],
+              "showCloseButton": true,
+              "barrierDismissible": true
+            },
+            "mainAxisSize": "max",
+            "mainAxisAlignment": "center"
+          },
+          "schemaCode": null,
+          "suffixIcon": null
+        },
+        {
+          "type": "template",
+          "label": "DELIVERY",
           "format": "button",
-          "visible": "{{fn:checkAllDoseDelivered(task)}} == false",
+          "visible":
+              "{{fn:hasRole('DISTRIBUTOR')}} == true && {{fn:checkAllDoseDelivered(task)}} == false && {{fn:canRecordDelivery(contextData.0.nextCycleId)}} == true && {{fn:hasStockForDelivery(contextData.0.eligibleProductVariants)}} == true",
           "onAction": [
             {
               "actionType": "NAVIGATION",
@@ -432,11 +459,20 @@ final dynamic sampleBednetFlows = {
                   {
                     "key": "ProjectBeneficiaryClientReferenceId",
                     "value":
-                        "{{contextData.0.ProjectBeneficiary.clientReferenceId}}"
+                        "{{contextData.0.projectBeneficiaries.0.clientReferenceId}}"
+                  },
+                  {
+                    "key": "cycleIndex",
+                    "value": "{{contextData.0.nextCycleId}}"
+                  },
+                  {"key": "doseIndex", "value": "{{contextData.0.nextDoseId}}"},
+                  {
+                    "key": "eligibleProductVariants",
+                    "value": "{{contextData.0.eligibleProductVariants}}"
                   }
                 ],
-                "name": "beneficiaryDetails",
-                "type": "TEMPLATE"
+                "name": "DELIVERY",
+                "type": "FORM"
               }
             }
           ],
@@ -484,8 +520,74 @@ final dynamic sampleBednetFlows = {
         {"actionType": "LOAD_UNIQUE_ID_POOL"}
       ],
       "wrapperConfig": {
+        "fields": {
+          "dose": {
+            "from": "{{tasks.additionalFields.fields}}",
+            "where": {
+              "left": "{{key}}",
+              "right": "doseIndex",
+              "operator": "eq"
+            },
+            "select": "{{value}}",
+            "default": 0,
+            "takeLast": true
+          },
+          "cycle": {
+            "from": "{{tasks.additionalFields.fields}}",
+            "where": {
+              "left": "{{key}}",
+              "right": "cycleIndex",
+              "operator": "eq"
+            },
+            "select": "{{value}}",
+            "default": 1,
+            "takeLast": true
+          }
+        },
         "filters": [],
         "computed": {
+          "nextDoseId": {
+            "order": 4,
+            "fallback": 1,
+            "condition": {
+              "if": {
+                "left": "{{cycle}}",
+                "right": "{{currentRunningCycle}}",
+                "operator": "equals"
+              },
+              "else": 1,
+              "then": {
+                "if": {
+                  "left": {"value": "{{dose}}", "operation": "increment"},
+                  "right": "{{deliveryLength}}",
+                  "operator": "lte"
+                },
+                "else": 1,
+                "then": {"value": "{{dose}}", "operation": "increment"}
+              }
+            }
+          },
+          "nextCycleId": {
+            "order": 5,
+            "fallback": "{{currentRunningCycle}}",
+            "condition": {
+              "if": {
+                "left": "{{cycle}}",
+                "right": "{{currentRunningCycle}}",
+                "operator": "equals"
+              },
+              "else": "{{currentRunningCycle}}",
+              "then": {
+                "if": {
+                  "left": {"value": "{{dose}}", "operation": "increment"},
+                  "right": "{{deliveryLength}}",
+                  "operator": "lte"
+                },
+                "else": {"value": "{{cycle}}", "operation": "increment"},
+                "then": "{{cycle}}"
+              }
+            }
+          },
           "deliveryLength": {
             "from":
                 "{{singleton.selectedProject.additionalDetails.projectType.cycles}}",
@@ -599,6 +701,22 @@ final dynamic sampleBednetFlows = {
                 "entity": "ProjectBeneficiaryModel"
               }
             ]
+          },
+          {
+            "name": "projectBeneficiaries",
+            "match": {
+              "field": "beneficiaryClientReferenceId",
+              "equalsFrom": "clientReferenceId"
+            },
+            "entity": "ProjectBeneficiaryModel"
+          },
+          {
+            "name": "tasks",
+            "match": {
+              "field": "projectBeneficiaryClientReferenceId",
+              "inFrom": "projectBeneficiaries.clientReferenceId"
+            },
+            "entity": "TaskModel"
           }
         ],
         "rootEntity": "HouseholdModel",
@@ -616,13 +734,24 @@ final dynamic sampleBednetFlows = {
             "fallback": null,
             "takeLast": true
           },
+          "currentDelivery": {
+            "from": "{{targetCycle.0.deliveries}}",
+            "order": 4,
+            "where": {
+              "left": "{{id}}",
+              "right": "{{nextDoseId}}",
+              "operator": "equals"
+            },
+            "fallback": null,
+            "takeLast": true
+          },
           "eligibleProductVariants": {
             "from": "{{currentDelivery.0.doseCriteria}}",
             "order": 5,
             "fallback": [],
             "takeLast": false,
             "evaluateCondition": {
-              "context": ["{{individuals.0}}", "{{household.0}}"],
+              "context": ["{{headIndividual.0}}", "{{HouseholdModel}}"],
               "condition": "{{item.condition}}",
               "transformations": {
                 "age": {"type": "ageInMonths", "source": "dateOfBirth"},
@@ -1701,7 +1830,11 @@ final dynamic sampleBednetFlows = {
                                       "{{ item.HouseholdModel.clientReferenceId }}"
                                 },
                                 {"key": "isEdit", "value": "true"},
-                                {"key": "isClosedHousehold", "value": "true"}
+                                {"key": "isClosedHousehold", "value": "true"},
+                                {
+                                  "key": "isDistributor",
+                                  "value": "{{fn:hasRole('DISTRIBUTOR')}}"
+                                }
                               ],
                               "name": "HOUSEHOLD",
                               "type": "FORM"
@@ -1772,7 +1905,7 @@ final dynamic sampleBednetFlows = {
           "label": "DOWNLOAD_BENEFICIARY_IDS",
           "format": "actionPopup",
           "visible":
-              "{{fn:hasMinimumBeneficiaryId(singleton.beneficiaryIdMinCount, uniqueIdPoolCount)}}==false",
+              "{{fn:hasRole('REGISTRAR')}} == true && {{fn:hasMinimumBeneficiaryId(singleton.beneficiaryIdMinCount, uniqueIdPoolCount)}}==false",
           "disabled": "{{searchBar}} == null || {{searchBar}} == ''",
           "fieldName": "beneficiaryIdMinCheck",
           "properties": {
@@ -1809,6 +1942,10 @@ final dynamic sampleBednetFlows = {
                           {
                             "key": "uniqueBeneficiaryIdModel",
                             "value": "{{latestBeneficiaryIdModel}}"
+                          },
+                          {
+                            "key": "isDistributor",
+                            "value": "{{fn:hasRole('DISTRIBUTOR')}}"
                           }
                         ],
                         "name": "HOUSEHOLD",
@@ -1858,7 +1995,7 @@ final dynamic sampleBednetFlows = {
           "label": "REGISTER_BENEFICIARY",
           "format": "button",
           "visible":
-              "{{fn:hasMinimumBeneficiaryId(singleton.beneficiaryIdMinCount, uniqueIdPoolCount)}}==true",
+              "{{fn:hasRole('REGISTRAR')}} == true && {{fn:hasMinimumBeneficiaryId(singleton.beneficiaryIdMinCount, uniqueIdPoolCount)}}==true",
           "disabled": "{{searchBar}} == null || {{searchBar}} == ''",
           "onAction": [
             {
@@ -1873,6 +2010,10 @@ final dynamic sampleBednetFlows = {
                   {
                     "key": "uniqueBeneficiaryIdModel",
                     "value": "{{latestBeneficiaryIdModel}}"
+                  },
+                  {
+                    "key": "isDistributor",
+                    "value": "{{fn:hasRole('DISTRIBUTOR')}}"
                   }
                 ],
                 "name": "HOUSEHOLD",
@@ -2602,6 +2743,14 @@ final dynamic sampleBednetFlows = {
               "schemaCode": null,
               "systemDate": false,
               "validations": [],
+              "visibilityCondition": {
+                "expression": [
+                  {
+                    "type": "custom",
+                    "condition": "navigation.isDistributor == false"
+                  }
+                ]
+              },
               "errorMessage": "",
               "isMultiSelect": false,
               "includeInSummary": true
