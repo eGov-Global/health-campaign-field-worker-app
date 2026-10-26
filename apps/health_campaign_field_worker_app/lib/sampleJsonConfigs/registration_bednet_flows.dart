@@ -2742,7 +2742,14 @@ final dynamic sampleBednetFlows = {
               "innerLabel": "",
               "schemaCode": null,
               "systemDate": false,
-              "validations": [],
+              "validations": [
+                {
+                  "type": "required",
+                  "value": true,
+                  "message":
+                      "APPONE_REGISTRATION_BENEFICIARYDETAILS_label_scanner_mandatory_messager"
+                }
+              ],
               "visibilityCondition": {
                 "expression": [
                   {
@@ -4264,7 +4271,14 @@ final dynamic sampleBednetFlows = {
               "innerLabel": "",
               "schemaCode": null,
               "systemDate": false,
-              "validations": [],
+              "validations": [
+                {
+                  "type": "required",
+                  "value": true,
+                  "message":
+                      "APPONE_REGISTRATION_BENEFICIARYDETAILS_label_scanner_mandatory_messager"
+                }
+              ],
               "errorMessage": "",
               "isMultiSelect": false,
               "includeInSummary": true
@@ -4669,7 +4683,14 @@ final dynamic sampleBednetFlows = {
               "innerLabel": "",
               "schemaCode": null,
               "systemDate": false,
-              "validations": [],
+              "validations": [
+                {
+                  "type": "required",
+                  "value": true,
+                  "message":
+                      "APPONE_REGISTRATION_DELIVERYDETAILS_label_scanner_mandatory_messager"
+                }
+              ],
               "errorMessage": "",
               "includeInForm": true,
               "isMultiSelect": false,
