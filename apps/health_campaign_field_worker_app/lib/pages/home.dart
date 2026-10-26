@@ -315,8 +315,8 @@ class _HomePageState extends LocalizedState<HomePage> {
       // referencing these formats render as empty space instead of the
       // "Unknown widget format" error placeholder.
       FlowWidgetFactory.register(const NoOpFaceAuthWidget('faceAuthEventDots'));
-      FlowWidgetFactory
-          .register(const NoOpFaceAuthWidget('faceAuthEventLegend'));
+      FlowWidgetFactory.register(
+          const NoOpFaceAuthWidget('faceAuthEventLegend'));
     }
 
     // Register custom action executor for REDOSE eligibility check
@@ -526,8 +526,9 @@ class _HomePageState extends LocalizedState<HomePage> {
       // different nesting depths; try the flat key first, then the entity
       // path (matches face_auth_event_dots_widget.dart:_resolveIndividualId).
       final entity = attendee is Map ? attendee['entity'] : null;
-      final individualId = (attendee is Map ? attendee['individualId'] : null) ??
-          (entity is Map ? entity['individualId'] : null);
+      final individualId =
+          (attendee is Map ? attendee['individualId'] : null) ??
+              (entity is Map ? entity['individualId'] : null);
 
       var attendanceCollectionData =
           widgetData?["attendanceCollection"]?[individualId];
@@ -557,8 +558,9 @@ class _HomePageState extends LocalizedState<HomePage> {
       double? currentStatus;
 
       final entity = attendee is Map ? attendee['entity'] : null;
-      final individualId = (attendee is Map ? attendee['individualId'] : null) ??
-          (entity is Map ? entity['individualId'] : null);
+      final individualId =
+          (attendee is Map ? attendee['individualId'] : null) ??
+              (entity is Map ? entity['individualId'] : null);
 
       var attendanceCollectionData =
           widgetData["attendanceCollection"]?[individualId];
@@ -3229,9 +3231,10 @@ class _HomePageState extends LocalizedState<HomePage> {
         .toList();
 
     final userRoleCodes = state.userModel.roles.map((e) => e.code).toList();
+    final isRegistrar = userRoleCodes.contains(RolesType.registrar.toValue());
     final isDistributor =
         userRoleCodes.contains(RolesType.distributor.toValue());
-    if (isDistributor) {
+    if (isRegistrar || isDistributor) {
       if (!filteredLabels.contains(i18.home.summaryReportLabel)) {
         filteredLabels.add(i18.home.summaryReportLabel);
       }

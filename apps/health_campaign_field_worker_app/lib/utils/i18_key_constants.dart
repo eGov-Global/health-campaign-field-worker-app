@@ -982,6 +982,10 @@ class SummaryReport {
 
   String get householdsRegistered => 'SUMMARY_REPORT_HOUSEHOLDS_REGISTERED';
 
+  String get householdsDelivered => 'SUMMARY_REPORT_HOUSEHOLDS_DELIVERED';
+
+  String get householdsReceiving => 'SUMMARY_REPORT_HOUSEHOLDS_RECEIVING';
+
   String get childrenTreated => 'SUMMARY_REPORT_CHILDREN_TREATED';
 
   String get childrenTreatedPercent =>

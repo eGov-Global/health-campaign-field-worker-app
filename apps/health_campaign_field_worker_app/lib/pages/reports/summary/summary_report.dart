@@ -178,7 +178,10 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
 
       // ── Group tasks by date for children treated ──
       // (filter by logged-in user AND status == 'ADMINISTRATION_SUCCESS' or 'VISITED')
+      // Households delivered only counts 'ADMINISTRATION_SUCCESS' tasks. Each
+      // delivery task is linked to the household's project beneficiary.
       final tasksByDate = <String, Set<String>>{};
+      final deliveredByDate = <String, Set<String>>{};
       for (final task in filteredTasks) {
         if (task.status != 'ADMINISTRATION_SUCCESS' && task.status != 'VISITED')
           continue;
@@ -194,6 +197,11 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
         final date = _epochToDateString(epochMs);
         tasksByDate.putIfAbsent(date, () => <String>{});
         tasksByDate[date]!.add(beneficiaryRef);
+        if (task.status == 'ADMINISTRATION_SUCCESS') {
+          deliveredByDate
+              .putIfAbsent(date, () => <String>{})
+              .add(beneficiaryRef);
+        }
       }
 
       // Filter household members by server report timestamp (if available)
@@ -294,6 +302,11 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
             serverReportHouseholdRegistration + (hhByDate[date] ?? 0);
         final childrenCount =
             serverReportChildrenTreated + (tasksByDate[date]?.length ?? 0);
+        // Server has no separate households-delivered field; its
+        // childrenTreated counts treated project beneficiaries, which are
+        // households in this campaign.
+        final hhDeliveredCount =
+            serverReportChildrenTreated + (deliveredByDate[date]?.length ?? 0);
         final nonHeadCount =
             serverReportChildrenRegistered + (nonHeadMembersByDate[date] ?? 0);
         final percentage =
@@ -357,6 +370,7 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
         rows.add(_SummaryReportRow(
           date: date,
           householdsRegistered: hhCount,
+          householdsDelivered: hhDeliveredCount,
           childrenTreated: childrenCount,
           childrenTreatedPercent: percentage,
           stockData: stockData,
@@ -397,25 +411,42 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
+    final roleCodes = context.loggedInUserRoles.map((role) => role.code);
+    final isRegistrar = roleCodes.contains(RolesType.registrar.toValue());
+    final isDistributor = roleCodes.contains(RolesType.distributor.toValue());
+
     // Build columns: base columns + per-product stock columns
     final columns = <DigitTableColumn>[
       DigitTableColumn(
         header: localizations.translate(i18.summaryReport.dateColumn),
         cellValue: 'date',
       ),
+      if (isRegistrar)
+        DigitTableColumn(
+          header:
+              localizations.translate(i18.summaryReport.householdsRegistered),
+          cellValue: 'hhRegistered',
+        ),
+      // Same count as households registered, labelled for distributors.
+      if (isDistributor)
+        DigitTableColumn(
+          header:
+              localizations.translate(i18.summaryReport.householdsReceiving),
+          cellValue: 'hhReceiving',
+        ),
       DigitTableColumn(
-        header: localizations.translate(i18.summaryReport.householdsRegistered),
-        cellValue: 'hhRegistered',
+        header: localizations.translate(i18.summaryReport.householdsDelivered),
+        cellValue: 'hhDelivered',
       ),
-      DigitTableColumn(
-        header: localizations.translate(i18.summaryReport.childrenTreated),
-        cellValue: 'childrenTreated',
-      ),
-      DigitTableColumn(
-        header:
-            localizations.translate(i18.summaryReport.childrenTreatedPercent),
-        cellValue: 'childrenTreatedPercent',
-      ),
+      // DigitTableColumn(
+      //   header: localizations.translate(i18.summaryReport.childrenTreated),
+      //   cellValue: 'childrenTreated',
+      // ),
+      // DigitTableColumn(
+      //   header:
+      //       localizations.translate(i18.summaryReport.childrenTreatedPercent),
+      //   cellValue: 'childrenTreatedPercent',
+      // ),
     ];
 
     // Add stock columns per product variant
@@ -452,18 +483,28 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
           _formatDisplayDate(row.date),
           cellKey: 'date',
         ),
+        if (isRegistrar)
+          DigitTableData(
+            row.householdsRegistered.toString(),
+            cellKey: 'hhRegistered',
+          ),
+        if (isDistributor)
+          DigitTableData(
+            row.householdsRegistered.toString(),
+            cellKey: 'hhReceiving',
+          ),
         DigitTableData(
-          row.householdsRegistered.toString(),
-          cellKey: 'hhRegistered',
+          row.householdsDelivered.toString(),
+          cellKey: 'hhDelivered',
         ),
-        DigitTableData(
-          row.childrenTreated.toString(),
-          cellKey: 'childrenTreated',
-        ),
-        DigitTableData(
-          '${row.childrenTreatedPercent.toStringAsFixed(1)}%',
-          cellKey: 'childrenTreatedPercent',
-        ),
+        // DigitTableData(
+        //   row.childrenTreated.toString(),
+        //   cellKey: 'childrenTreated',
+        // ),
+        // DigitTableData(
+        //   '${row.childrenTreatedPercent.toStringAsFixed(1)}%',
+        //   cellKey: 'childrenTreatedPercent',
+        // ),
       ];
 
       // Add stock cells per product variant
@@ -580,6 +621,7 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
 class _SummaryReportRow {
   final String date;
   final int householdsRegistered;
+  final int householdsDelivered;
   final int childrenTreated;
   final double childrenTreatedPercent;
   final Map<String, _ProductStockData> stockData;
@@ -587,6 +629,7 @@ class _SummaryReportRow {
   _SummaryReportRow({
     required this.date,
     required this.householdsRegistered,
+    required this.householdsDelivered,
     required this.childrenTreated,
     required this.childrenTreatedPercent,
     this.stockData = const {},
