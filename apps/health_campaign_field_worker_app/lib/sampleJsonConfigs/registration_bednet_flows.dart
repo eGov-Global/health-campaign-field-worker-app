@@ -4696,6 +4696,19 @@ final dynamic sampleBednetFlows = {
                   "message": "SCANNED_RESOURCE_COUNT_MISMATCH"
                 }
               ],
+              "comparisonConfig": {
+                "model": "task",
+                "extractFrom": "additionalFields",
+                "extractKey": "scanner",
+                "filters": [
+                  {
+                    "key": "additionalFields",
+                    "operation": "matches",
+                    "value": "{{scannedValue}}"
+                  }
+                ],
+                "errorMessage": "RESOURCES_ALREADY_SCANNED"
+              },
               "errorMessage": "",
               "includeInForm": true,
               "isMultiSelect": false,

@@ -166,25 +166,38 @@ class ScannerComparisonUtils {
     // 3. Resolve SQL filter values with switchOn/cases support
     final resolvedFilters = <SearchFilter>[];
     for (final filter in sqlFilters) {
-      final resolvedValue =
-          resolveFilterValue(filter, formValues, mergedNavParams);
+      final resolvedValue = resolveFilterValue(
+          filter, formValues, mergedNavParams,
+          scannedValue: scannedValue);
       debugPrint('ScannerComparisonUtils: SQL filter ${filter.key} '
           'resolved to: $resolvedValue');
       if (resolvedValue == null || resolvedValue.isEmpty) continue;
-      resolvedFilters.add(SearchFilter(
-        field: filter.key,
-        operator: filter.operation,
-        value: resolvedValue,
-        root: config.model,
-      ));
+      // additionalFields is stored as JSON text, where characters such as
+      // the GS1 group separator (0x1D) or quotes are escaped (e.g.
+      // "\u001d"), so a raw substring search would miss those rows. Search
+      // for each run of characters JSON stores as-is instead; this only
+      // narrows the query, the exact match runs on the decoded values below.
+      final values = filter.operation == 'matches' &&
+              config.extractFrom != 'column'
+          ? jsonSafeFragments(resolvedValue)
+          : [resolvedValue];
+      for (final value in values) {
+        resolvedFilters.add(SearchFilter(
+          field: filter.key,
+          operator: filter.operation,
+          value: value,
+          root: config.model,
+        ));
+      }
     }
 
     // Resolve entity-level additionalFields filter expected values upfront
     final resolvedEntityFilters = <String, String>{};
     for (final filter in entityAdditionalFieldFilters) {
       final afKey = filter.key.substring('additionalFields.'.length);
-      final resolvedValue =
-          resolveFilterValue(filter, formValues, mergedNavParams);
+      final resolvedValue = resolveFilterValue(
+          filter, formValues, mergedNavParams,
+          scannedValue: scannedValue);
       debugPrint('ScannerComparisonUtils: Entity filter $afKey '
           'resolved to: $resolvedValue');
       if (resolvedValue != null && resolvedValue.isNotEmpty) {
@@ -237,8 +250,6 @@ class ScannerComparisonUtils {
     }
 
     // 7. For "additionalFields" match: check entity-level filters then barcode
-    // Normalize the scanned value so key ordering doesn't matter
-    final normalizedScanned = _normalizeBarcode(scannedValue);
     for (final entity in entities) {
       try {
         final additionalFields = (entity as dynamic).additionalFields;
@@ -269,10 +280,7 @@ class ScannerComparisonUtils {
         // Entity-level filters passed — now check for barcode match
         for (final field in additionalFields.fields) {
           if (field.key == config.extractKey && field.value != null) {
-            final existingValues =
-                extractComparisonValues(field.value.toString());
-            if (existingValues.contains(scannedValue) ||
-                existingValues.contains(normalizedScanned)) {
+            if (storedValueContains(field.value.toString(), scannedValue)) {
               debugPrint(
                   'ScannerComparisonUtils: DUPLICATE found in entity');
               return true;
@@ -300,40 +308,48 @@ class ScannerComparisonUtils {
   static String? resolveFilterValue(
     ComparisonFilter filter,
     Map<String, dynamic> formValues,
-    Map<String, dynamic> navigationParams,
-  ) {
+    Map<String, dynamic> navigationParams, {
+    String? scannedValue,
+  }) {
     String template = filter.value;
 
     // Handle switchOn/cases for conditional filter values
     if (filter.switchOn != null && filter.cases != null) {
-      final switchKey =
-          resolveTemplate(filter.switchOn!, formValues, navigationParams);
+      final switchKey = resolveTemplate(
+          filter.switchOn!, formValues, navigationParams,
+          scannedValue: scannedValue);
       if (switchKey != null && filter.cases!.containsKey(switchKey)) {
         template = filter.cases![switchKey]!;
       }
     }
 
-    return resolveTemplate(template, formValues, navigationParams);
+    return resolveTemplate(template, formValues, navigationParams,
+        scannedValue: scannedValue);
   }
 
   /// Resolves a template string like `{{navigation.facilityFromWhich}}` to its value.
   ///
-  /// Supports two prefixes:
+  /// Supports:
   /// - `form.` — looks up value in [formValues]
   /// - `navigation.` — looks up value in [navigationParams]
+  /// - `scannedValue` — the code being checked. Lets a filter narrow the
+  ///   SQL query to rows that mention it, e.g. a `matches` filter on the
+  ///   `additionalFields` column.
   ///
   /// Static strings (without `{{`) are returned as-is.
   static String? resolveTemplate(
     String template,
     Map<String, dynamic> formValues,
-    Map<String, dynamic> navigationParams,
-  ) {
+    Map<String, dynamic> navigationParams, {
+    String? scannedValue,
+  }) {
     if (!template.contains('{{')) return template;
 
     final match = RegExp(r'^\{\{(.+?)\}\}$').firstMatch(template);
     if (match == null) return template;
     final path = match.group(1)!.trim();
 
+    if (path == 'scannedValue') return scannedValue;
     if (path.startsWith('form.')) {
       return formValues[path.substring(5)]?.toString();
     }
@@ -341,6 +357,38 @@ class ScannerComparisonUtils {
       return navigationParams[path.substring(11)]?.toString();
     }
     return null;
+  }
+
+  /// Splits [value] into the runs of characters that JSON stores unescaped,
+  /// dropping control characters, quotes and backslashes. Each run appears
+  /// verbatim in the JSON text of a column that holds [value].
+  static List<String> jsonSafeFragments(String value) {
+    return value
+        .split(RegExp(r'[\x00-\x1F"\\]'))
+        .where((fragment) => fragment.isNotEmpty)
+        .toList();
+  }
+
+  /// Whether [scannedValue] is one of the codes in [storedValue], a scanner
+  /// value read back from the DB.
+  static bool storedValueContains(String storedValue, String scannedValue) {
+    final existingValues = extractComparisonValues(storedValue);
+    // Normalize the scanned value so GS1 key ordering doesn't matter
+    if (existingValues.contains(scannedValue) ||
+        existingValues.contains(_normalizeBarcode(scannedValue))) {
+      return true;
+    }
+
+    // Plain QR scans are stored as a comma-separated list ("QR1, QR2"),
+    // which extractComparisonValues reads as one legacy GS1 barcode. Match
+    // a plain scanned code against each entry of that list instead.
+    final target = scannedValue.trim();
+    final isGs1 =
+        target.contains('|') || RegExp(r'^\d{2}:').hasMatch(target);
+    if (target.isEmpty || isGs1) return false;
+    return storedValue
+        .split(RegExp('[,;]'))
+        .any((code) => code.trim() == target);
   }
 
   /// Extracts comparison values from serialized GS1 barcode strings.
