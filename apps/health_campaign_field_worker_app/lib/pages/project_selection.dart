@@ -458,8 +458,12 @@ class _ProjectSelectionPageState extends LocalizedState<ProjectSelectionPage> {
       // permission handler + boundary). Sending only one of these was
       // leaving the other two unresolved because `_loadLocale` clears the
       // map and refills only what matches the current filter.
+      // `hcm-common` is kept in the filter because the next screen
+      // (PermissionsPage) renders CORE_COMMON_* codes; it is already cached
+      // from login, so this adds no network call.
       locBloc.add(LocalizationEvent.onLoadLocalization(
-        module: '$fullModuleString,$permHandlerModule,$boundaryModule',
+        module:
+            '$fullModuleString,$permHandlerModule,$boundaryModule,hcm-common',
         tenantId: envConfig.variables.tenantId,
         locale: selectedLocale,
         path: Constants.localizationApiPath,
