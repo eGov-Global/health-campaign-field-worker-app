@@ -48,6 +48,11 @@ class _ResourceCardState extends LocalizedState<ResourceCard> {
 
   bool _toastShown = false;
 
+  // True while a toast raised by this card may still be on screen. Toasts
+  // are only dismissed when this is set, so the card never closes toasts
+  // shown by other widgets (e.g. the page's validation toast on submit).
+  bool _ownToastVisible = false;
+
   // Memoized form and subscription management
   FormGroup? _memoizedForm;
   List<DeliveryProductVariant>? _lastProductVariants;
@@ -66,8 +71,11 @@ class _ResourceCardState extends LocalizedState<ResourceCard> {
       subscription.cancel();
     }
     _formSubscriptions.clear();
-    // Dismiss any active toasts when widget is disposed (e.g., page navigation)
-    ToastManager().dismissAll(showAnim: false);
+    // Dismiss this card's toast when the widget is disposed (e.g., page
+    // navigation)
+    if (_ownToastVisible) {
+      ToastManager().dismissAll(showAnim: false);
+    }
     super.dispose();
   }
 
@@ -130,6 +138,7 @@ class _ResourceCardState extends LocalizedState<ResourceCard> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Only show toast if widget is still mounted (not navigated away)
         if (mounted) {
+          _ownToastVisible = true;
           Toast.showToast(
             position: ToastPosition.aboveOneButtonFooter,
             context,
@@ -238,13 +247,20 @@ class _ResourceCardState extends LocalizedState<ResourceCard> {
                   });
                 }
 
-                // Reset toast flag and dismiss any active toast when field becomes valid
+                // Reset toast flag and dismiss this card's toast when the
+                // field becomes valid. This build also runs on every page
+                // rebuild (e.g. on submit), so dismissing unconditionally
+                // closed other fields' validation toasts as soon as they
+                // appeared.
                 if (!field.control.invalid) {
                   _toastShown = false;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (!mounted) return;
-                    ToastManager().dismissAll(showAnim: false);
-                  });
+                  if (_ownToastVisible) {
+                    _ownToastVisible = false;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      ToastManager().dismissAll(showAnim: false);
+                    });
+                  }
                 }
 
                 return Column(

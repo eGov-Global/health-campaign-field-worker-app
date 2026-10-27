@@ -305,6 +305,13 @@ class _FormsRenderPageState extends LocalizedState<FormsRenderPage> {
                               // 2. Mark all visible controls as touched and revalidate
                               for (final key in currentKeys) {
                                 final control = formGroup.control(key);
+                                // Rules that read another field (e.g. scan
+                                // count vs quantity) go stale when that
+                                // field changes, so re-run them here.
+                                if (hasCrossFieldValidation(
+                                    schema.properties?[key])) {
+                                  control.updateValueAndValidity();
+                                }
                                 control.markAsTouched();
                                 // control.updateValueAndValidity();
                               }

@@ -21,13 +21,33 @@ class JsonSchemaScannerBuilder extends JsonSchemaBuilder<String> {
   /// Converts ValidationRule list to ScannerValidation list
   List<ScannerValidation>? _toScannerValidations() {
     if (validations == null) return null;
-    return validations!
+    final scannerValidations = validations!
         .map((v) => ScannerValidation(
               type: v.type,
               value: v.value,
               message: v.message,
             ))
         .toList();
+
+    // With a scanCountMatch rule and no fixed scanLimit, let the scanner
+    // page accept exactly the count the linked field holds right now
+    // (e.g. 3 bednets distributed -> 3 scans). Without this the page caps
+    // scans at its default of 1.
+    final countRule =
+        validations!.firstWhereOrNull((v) => v.type == 'scanCountMatch');
+    final hasScanLimit = validations!.any((v) => v.type == 'scanLimit');
+    if (countRule != null && countRule.value is String && !hasScanLimit) {
+      final expected =
+          resolveExpectedScanCount(form, countRule.value as String);
+      if (expected != null && expected > 0) {
+        scannerValidations.add(ScannerValidation(
+          type: 'scanLimit',
+          value: expected,
+          message: countRule.message,
+        ));
+      }
+    }
+    return scannerValidations;
   }
 
   /// Attempts to parse a scanned QR string as the CDD-identity JSON payload

@@ -85,4 +85,91 @@ void main() {
       expect(form.control('age').valid, isFalse);
     });
   });
+
+  group('scanCountMatch validation', () {
+    final scannerSchema = PropertySchema(
+      type: PropertySchemaType.string,
+      format: PropertySchemaFormat.scanner,
+      validations: [
+        ValidationRule(type: 'required', value: true, message: 'Required'),
+        ValidationRule(
+          type: 'scanCountMatch',
+          value: 'resourceCard.quantityDistributed',
+          message: 'Mismatch',
+        ),
+      ],
+    );
+
+    FormGroup buildForm(dynamic resourceCard) => FormGroup({
+          'resourceCard': FormControl<dynamic>(value: resourceCard),
+          'scanner': FormControl<String>(
+            validators: buildValidators(scannerSchema),
+          ),
+        });
+
+    List<Map<String, dynamic>> rows(List<int> quantities) => quantities
+        .map((q) => {
+              'resourceDelivered': {'name': 'BEDNET', 'productId': 'P1'},
+              'quantityDistributed': q,
+            })
+        .toList();
+
+    test('passes only when scanned count equals the quantity', () {
+      final form = buildForm(rows([3]));
+      final scanner = form.control('scanner');
+
+      expect(scanner.hasError('required'), isTrue);
+
+      scanner.value = 'QR1, QR2';
+      expect(scanner.hasError('scanCountMatch'), isTrue);
+
+      scanner.value = 'QR1, QR2, QR3';
+      expect(scanner.valid, isTrue);
+
+      scanner.value = 'QR1, QR2, QR3, QR4';
+      expect(scanner.hasError('scanCountMatch'), isTrue);
+    });
+
+    test('sums quantities across resource rows', () {
+      final form = buildForm(rows([2, 1]));
+      form.control('scanner').value = 'QR1, QR2, QR3';
+      expect(form.control('scanner').valid, isTrue);
+    });
+
+    test('catches a quantity change after scanning once re-validated', () {
+      final form = buildForm(rows([2]));
+      final scanner = form.control('scanner');
+      scanner.value = 'QR1, QR2';
+      expect(scanner.valid, isTrue);
+
+      form.control('resourceCard').value = rows([3]);
+      scanner.updateValueAndValidity();
+      expect(scanner.hasError('scanCountMatch'), isTrue);
+    });
+
+    test('skips the count check while the resource card has no quantity', () {
+      final form = buildForm(null);
+      form.control('scanner').value = 'QR1';
+      expect(form.control('scanner').valid, isTrue);
+    });
+
+    test('is flagged as a cross-field rule', () {
+      expect(hasCrossFieldValidation(scannerSchema), isTrue);
+      expect(
+        hasCrossFieldValidation(PropertySchema(
+          type: PropertySchemaType.string,
+          validations: [ValidationRule(type: 'required', value: true)],
+        )),
+        isFalse,
+      );
+    });
+
+    test('counts QR and GS1 scanner values', () {
+      expect(countScannedCodes(null), 0);
+      expect(countScannedCodes(''), 0);
+      expect(countScannedCodes('QR1'), 1);
+      expect(countScannedCodes('QR1, QR2, QR3'), 3);
+      expect(countScannedCodes('01:123|21:A;01:123|21:B'), 2);
+    });
+  });
 }

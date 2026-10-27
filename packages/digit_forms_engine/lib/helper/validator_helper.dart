@@ -199,6 +199,27 @@ List<Validator<T>> buildValidators<T>(PropertySchema schema,
           }
           break;
 
+        case 'scanCountMatch':
+          // The number of scanned codes must equal a count held by another
+          // field on the same page, e.g. "resourceCard.quantityDistributed".
+          if (rule.value is String && (rule.value as String).isNotEmpty) {
+            final path = rule.value as String;
+            validators.add(Validators.delegate((control) {
+              final form = control.parent;
+              if (form is! FormGroup) return null;
+              final expected = resolveExpectedScanCount(form, path);
+              // No count to compare against yet; the source field's own
+              // validation reports that.
+              if (expected == null || expected <= 0) return null;
+              final scanned = countScannedCodes(control.value);
+              if (scanned == expected) return null;
+              return {
+                'scanCountMatch': {'expected': expected, 'actual': scanned}
+              };
+            }) as Validator<T>);
+          }
+          break;
+
         default:
           if (kDebugMode) {
             // print('Unknown validation type: ${rule.type}');
@@ -209,6 +230,64 @@ List<Validator<T>> buildValidators<T>(PropertySchema schema,
   }
 
   return validators;
+}
+
+/// Rule types whose result depends on another field's value. Their cached
+/// result goes stale when that other field changes, so they are re-run on
+/// submit.
+const Set<String> _crossFieldValidationTypes = {'scanCountMatch'};
+
+/// Whether [schema] has a rule that reads another field's value.
+bool hasCrossFieldValidation(PropertySchema? schema) {
+  return schema?.validations
+          ?.any((rule) => _crossFieldValidationTypes.contains(rule.type)) ??
+      false;
+}
+
+/// Counts the codes held by a scanner field value. QR codes are stored
+/// comma-separated; GS1 barcodes are stored ';'-separated, with '|' between
+/// the parts of one barcode.
+int countScannedCodes(dynamic value) {
+  if (value == null) return 0;
+  final raw = value.toString().trim();
+  if (raw.isEmpty) return 0;
+  final isGs1 = raw.contains('|') || RegExp(r'^\d{2}:').hasMatch(raw);
+  return raw
+      .split(isGs1 ? ';' : ',')
+      .where((code) => code.trim().isNotEmpty)
+      .length;
+}
+
+/// Reads the number of codes a scanner field must hold from another field
+/// in [form]. [path] is "<field>" or "<field>.<key>[.<key>...]". When the
+/// field holds a list (e.g. resource card rows), the value at the key path
+/// is summed across the rows. Returns null when nothing numeric is found.
+int? resolveExpectedScanCount(FormGroup form, String path) {
+  final segments = path.split('.').map((s) => s.trim()).toList();
+  final fieldName = segments.first;
+  if (!form.contains(fieldName)) return null;
+  final keys = segments.skip(1).toList();
+
+  num? readNumber(dynamic node) {
+    dynamic current = node;
+    for (final key in keys) {
+      if (current is! Map) return null;
+      current = current[key];
+    }
+    if (current is num) return current;
+    return current == null ? null : num.tryParse(current.toString());
+  }
+
+  final fieldValue = form.control(fieldName).value;
+  if (fieldValue is List) {
+    num? total;
+    for (final item in fieldValue) {
+      final number = readNumber(item);
+      if (number != null) total = (total ?? 0) + number;
+    }
+    return total?.toInt();
+  }
+  return readNumber(fieldValue)?.toInt();
 }
 
 /// Checks if the validations contain a rule of type 'required'.
