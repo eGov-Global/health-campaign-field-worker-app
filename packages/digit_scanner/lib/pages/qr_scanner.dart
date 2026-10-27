@@ -15,6 +15,7 @@ import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
@@ -137,6 +138,16 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
   static const _manualCodeFormKey = 'manualCode';
   static const _manualSerialNoFormKey = 'serialNoCode';
   static const _manualExpiryDateFormKey = 'expiryDate';
+
+  /// Measured height of the scanned-results sheet at the bottom of the
+  /// camera view. The scan frame and manual-entry link are laid out above
+  /// it so the sheet never covers them.
+  double _resultSheetHeight = 0;
+
+  void _onResultSheetSizeChanged(Size size) {
+    if (!mounted || size.height == _resultSheetHeight) return;
+    setState(() => _resultSheetHeight = size.height);
+  }
 
   /// Safely parses DateTime from form control value
   /// Handles String, DateTime, int (milliseconds), and null values
@@ -551,7 +562,11 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
           validators: [Validators.required],
         ),
         _manualSerialNoFormKey: FormControl<String>(),
+        // Start with the date the picker displays (today, via
+        // _parseExpiryDate). Left null, the field looked filled but submit
+        // failed as "required" until the user picked the date again.
         _manualExpiryDateFormKey: FormControl<DateTime>(
+          value: DateUtils.dateOnly(DateTime.now()),
           validators: [Validators.required],
         ),
       });
@@ -1319,71 +1334,89 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
         // Column so they can never overlap, whatever the screen size.
         Positioned.fill(
           child: SafeArea(
-            child: Column(
-              children: [
-                // Clears the flash / close buttons pinned at the top.
-                const SizedBox(height: spacer8),
-                const Spacer(),
-                Text(
-                  localizations.translate(
-                    i18.scanner.scannerLabel,
-                  ),
-                  textAlign: TextAlign.center,
-                  style: textTheme.bodyL.copyWith(
-                    color: theme.colorScheme.onError,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: spacer4),
-                FractionallySizedBox(
-                  widthFactor: 0.75,
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          width: spacer1,
-                          color: theme.colorScheme.error,
+            child: Padding(
+              // Clears the flash / close buttons pinned at the top and the
+              // scanned-results sheet at the bottom.
+              padding: EdgeInsets.only(
+                top: spacer8,
+                bottom: _resultSheetHeight,
+              ),
+              child: Align(
+                // Same 1:2 split of the spare space above and below the
+                // content that the previous spacers gave.
+                alignment: const Alignment(0, -1 / 3),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      localizations.translate(
+                        i18.scanner.scannerLabel,
+                      ),
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyL.copyWith(
+                        color: theme.colorScheme.onError,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: spacer4),
+                    // Square frame, 75% of the width, shrinking when the
+                    // results sheet leaves less height than that.
+                    Flexible(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final side = constraints.maxWidth * 0.75 <
+                                  constraints.maxHeight
+                              ? constraints.maxWidth * 0.75
+                              : constraints.maxHeight;
+                          return SizedBox.square(
+                            dimension: side,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  width: spacer1,
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: spacer6),
+                    Text(
+                      localizations.translate(
+                        i18.scanner.manualScan,
+                      ),
+                      style: textTheme.bodyL
+                          .copyWith(color: theme.colorTheme.paper.primary),
+                    ),
+                    if (showEnterManualCodeLink) ...[
+                      const SizedBox(height: spacer6),
+                      GestureDetector(
+                        onTap: () async {
+                          final proceed = await onEnterManualCodePressed();
+                          if (!proceed || !mounted) return;
+                          setState(() {
+                            manualCode = true;
+                          });
+                        },
+                        child: Text(
+                          localizations.translate(i18.scanner.enterManualCode),
+                          style: textTheme.bodyL.copyWith(
+                            color: theme.colorScheme.secondary,
+                            decoration: TextDecoration.underline,
+                            decorationColor: theme.colorScheme.secondary,
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    ],
+                    if (extraManualEntryContent(theme, textTheme) != null) ...[
+                      const SizedBox(height: spacer6),
+                      extraManualEntryContent(theme, textTheme)!,
+                    ],
+                  ],
                 ),
-                const SizedBox(height: spacer6),
-                Text(
-                  localizations.translate(
-                    i18.scanner.manualScan,
-                  ),
-                  style: textTheme.bodyL
-                      .copyWith(color: theme.colorTheme.paper.primary),
-                ),
-                if (showEnterManualCodeLink) ...[
-                  const SizedBox(height: spacer6),
-                  GestureDetector(
-                    onTap: () async {
-                      final proceed = await onEnterManualCodePressed();
-                      if (!proceed || !mounted) return;
-                      setState(() {
-                        manualCode = true;
-                      });
-                    },
-                    child: Text(
-                      localizations.translate(i18.scanner.enterManualCode),
-                      style: textTheme.bodyL.copyWith(
-                        color: theme.colorScheme.secondary,
-                        decoration: TextDecoration.underline,
-                        decorationColor: theme.colorScheme.secondary,
-                      ),
-                    ),
-                  ),
-                ],
-                if (extraManualEntryContent(theme, textTheme) != null) ...[
-                  const SizedBox(height: spacer6),
-                  extraManualEntryContent(theme, textTheme)!,
-                ],
-                // Larger flex leaves room for the bottom sheet.
-                const Spacer(flex: 2),
-              ],
+              ),
             ),
           ),
         ),
@@ -1411,335 +1444,380 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
       bottom: 0,
       left: 0,
       right: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.onError,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(spacer2),
-            topRight: Radius.circular(spacer2),
+      // Reports its height so the scan frame and manual-entry link are laid
+      // out above it. Capped at half the screen; past that the list scrolls.
+      child: _SizeReporter(
+        onSizeChanged: _onResultSheetSizeChanged,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.5,
           ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.only(top: spacer2, bottom: spacer6),
-                child: Container(
-                  width: spacer8,
-                  height: spacer1,
-                  decoration: BoxDecoration(
-                    color: theme.colorTheme.text.disabled,
-                    borderRadius: BorderRadius.circular(spacer1),
-                  ),
-                ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.onError,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(spacer2),
+                topRight: Radius.circular(spacer2),
               ),
             ),
-            if (scannedCount > 0) ...[
-              Padding(
-                padding: const EdgeInsets.only(
-                  top: spacer1,
-                  bottom: spacer2,
-                  left: spacer5,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: spacer2, bottom: spacer6),
+                    child: Container(
+                      width: spacer8,
+                      height: spacer1,
+                      decoration: BoxDecoration(
+                        color: theme.colorTheme.text.disabled,
+                        borderRadius: BorderRadius.circular(spacer1),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Text(
-                  '$scannedCount ${localizations.translate(scannedCount == 1 ? i18.scanner.resourceScanned : i18.scanner.resourcesScanned)}',
-                  style: textTheme.headingM
-                      .copyWith(color: theme.colorTheme.text.primary),
-                ),
-              ),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  itemCount: scannedCount,
-                  itemBuilder: (BuildContext context, int index) {
-                    if (widget.effectiveIsGS1code) {
-                      final gs1Data = DigitScannerUtils()
-                          .getGs1CodeFormattedStringAtIndex(
-                              effectiveBarcodes, index);
-                      return ListTile(
-                        shape: const Border(),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: spacer2, vertical: spacer1),
-                        title: Container(
-                          margin: const EdgeInsets.only(
-                            left: spacer1,
-                            right: spacer1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: DigitTheme.instance.colorScheme.surface,
-                            border: Border.all(
-                              color: DigitTheme.instance.colorScheme.outline,
-                              width: 1,
-                            ),
-                            borderRadius: const BorderRadius.all(
-                              Radius.circular(4.0),
-                            ),
-                          ),
-                          padding: const EdgeInsets.all(spacer2),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: gs1Data.entries.map((entry) {
-                                    final label = localizations
-                                        .translate('GS1_${entry.key}');
-                                    final value = entry.value is DateTime
-                                        ? DateFormat('dd MMM yyyy')
-                                            .format(entry.value)
-                                        : entry.value?.toString() ?? '';
-                                    return Padding(
-                                      padding: const EdgeInsets.only(
-                                          bottom: spacer1),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          SizedBox(
-                                            width: 80,
-                                            child: Text(
-                                              label,
-                                              style: textTheme.bodyS.copyWith(
-                                                color: theme
-                                                    .colorTheme.text.secondary,
+                if (scannedCount > 0) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: spacer1,
+                      bottom: spacer2,
+                      left: spacer5,
+                    ),
+                    child: Text(
+                      '$scannedCount ${localizations.translate(scannedCount == 1 ? i18.scanner.resourceScanned : i18.scanner.resourcesScanned)}',
+                      style: textTheme.headingM
+                          .copyWith(color: theme.colorTheme.text.primary),
+                    ),
+                  ),
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      itemCount: scannedCount,
+                      itemBuilder: (BuildContext context, int index) {
+                        if (widget.effectiveIsGS1code) {
+                          final gs1Data = DigitScannerUtils()
+                              .getGs1CodeFormattedStringAtIndex(
+                                  effectiveBarcodes, index);
+                          return ListTile(
+                            shape: const Border(),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: spacer2, vertical: spacer1),
+                            title: Container(
+                              margin: const EdgeInsets.only(
+                                left: spacer1,
+                                right: spacer1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: DigitTheme.instance.colorScheme.surface,
+                                border: Border.all(
+                                  color: DigitTheme.instance.colorScheme.outline,
+                                  width: 1,
+                                ),
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(4.0),
+                                ),
+                              ),
+                              padding: const EdgeInsets.all(spacer2),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: gs1Data.entries.map((entry) {
+                                        final label = localizations
+                                            .translate('GS1_${entry.key}');
+                                        final value = entry.value is DateTime
+                                            ? DateFormat('dd MMM yyyy')
+                                                .format(entry.value)
+                                            : entry.value?.toString() ?? '';
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: spacer1),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              SizedBox(
+                                                width: 80,
+                                                child: Text(
+                                                  label,
+                                                  style: textTheme.bodyS.copyWith(
+                                                    color: theme
+                                                        .colorTheme.text.secondary,
+                                                  ),
+                                                ),
                                               ),
+                                              const SizedBox(width: spacer1),
+                                              Expanded(
+                                                child: Text(
+                                                  value,
+                                                  style: textTheme.bodyS.copyWith(
+                                                    color: theme
+                                                        .colorTheme.text.primary,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    icon: Icon(
+                                      Icons.delete,
+                                      color: theme.colorScheme.error,
+                                      size: 24,
+                                    ),
+                                    onPressed: () {
+                                      final bloc =
+                                          context.read<DigitScannerBloc>();
+                                      result = List.from(effectiveBarcodes);
+                                      result.removeAt(index);
+                                      setState(() {
+                                        result = result;
+                                      });
+                                      bloc.add(
+                                        DigitScannerEvent.handleScanner(
+                                          barCode: result,
+                                          qrCode: effectiveQrCodes,
+                                          regex: widget.effectiveRegex,
+                                          patternMessage: widget.patternMessage,
+                                          scannerId: widget.scannerId,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+    
+                        // QR code display — render label:value pairs when the
+                        // scanned payload is a JSON object; otherwise fall back
+                        // to the trimmed raw string.
+                        final rawQr = effectiveQrCodes[index].toString();
+                        final qrPairs = _tryParseJsonMap(rawQr);
+                        final isPairView = qrPairs != null;
+                        return ListTile(
+                          shape: const Border(),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: spacer2, vertical: spacer1),
+                          title: Container(
+                            margin: const EdgeInsets.only(
+                              left: spacer1,
+                              right: spacer1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: DigitTheme.instance.colorScheme.surface,
+                              border: Border.all(
+                                color: DigitTheme.instance.colorScheme.outline,
+                                width: 1,
+                              ),
+                              borderRadius: const BorderRadius.all(
+                                Radius.circular(4.0),
+                              ),
+                            ),
+                            padding: isPairView
+                                ? const EdgeInsets.all(spacer3)
+                                : const EdgeInsets.only(
+                                    left: spacer4,
+                                    right: spacer1,
+                                    top: spacer3,
+                                    bottom: spacer3),
+                            child: Row(
+                              crossAxisAlignment: isPairView
+                                  ? CrossAxisAlignment.start
+                                  : CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                if (isPairView)
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        for (var i = 0;
+                                            i < qrPairs.entries.length;
+                                            i++)
+                                          Padding(
+                                            // No bottom padding on the last row —
+                                            // the card's own padding provides
+                                            // the trailing gap.
+                                            padding: EdgeInsets.only(
+                                              bottom:
+                                                  i == qrPairs.entries.length - 1
+                                                      ? 0
+                                                      : spacer2,
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                // Flex-based label column so long
+                                                // JSON keys don't clip on narrow
+                                                // screens; value gets more room.
+                                                Expanded(
+                                                  flex: 4,
+                                                  child: Text(
+                                                    localizations.translate(qrPairs
+                                                        .entries
+                                                        .elementAt(i)
+                                                        .key),
+                                                    style: textTheme.bodyS.copyWith(
+                                                      color: theme.colorTheme.text
+                                                          .secondary,
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: spacer2),
+                                                Expanded(
+                                                  flex: 6,
+                                                  child: Text(
+                                                    _formatQrValue(qrPairs.entries
+                                                        .elementAt(i)
+                                                        .value),
+                                                    style: textTheme.bodyS.copyWith(
+                                                      color: theme.colorTheme.text
+                                                          .primary,
+                                                    ),
+                                                    maxLines: 3,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                          const SizedBox(width: spacer1),
-                                          Expanded(
-                                            child: Text(
-                                              value,
-                                              style: textTheme.bodyS.copyWith(
-                                                color: theme
-                                                    .colorTheme.text.primary,
-                                              ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
+                                      ],
+                                    ),
+                                  )
+                                else
+                                  Flexible(
+                                    child: Text(
+                                      overflow: TextOverflow.ellipsis,
+                                      DigitScannerUtils().trimString(rawQr),
+                                    ),
+                                  ),
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: ClipRect(
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: Icon(
+                                        Icons.delete,
+                                        color: theme.colorScheme.error,
+                                        size: 24,
+                                      ),
+                                      onPressed: () {
+                                        final bloc = context.read<DigitScannerBloc>();
+                                        codes = List.from(effectiveQrCodes);
+                                        codes.removeAt(index);
+                                        setState(() {
+                                          codes = codes;
+                                        });
+                                    bloc.add(
+                                      DigitScannerEvent.handleScanner(
+                                        barCode: effectiveBarcodes,
+                                        qrCode: codes,
+                                        regex: widget.effectiveRegex,
+                                        patternMessage: widget.patternMessage,
+                                        scannerId: widget.scannerId,
                                       ),
                                     );
-                                  }).toList(),
-                                ),
-                              ),
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: Icon(
-                                  Icons.delete,
-                                  color: theme.colorScheme.error,
-                                  size: 24,
-                                ),
-                                onPressed: () {
-                                  final bloc =
-                                      context.read<DigitScannerBloc>();
-                                  result = List.from(effectiveBarcodes);
-                                  result.removeAt(index);
-                                  setState(() {
-                                    result = result;
-                                  });
-                                  bloc.add(
-                                    DigitScannerEvent.handleScanner(
-                                      barCode: result,
-                                      qrCode: effectiveQrCodes,
-                                      regex: widget.effectiveRegex,
-                                      patternMessage: widget.patternMessage,
-                                      scannerId: widget.scannerId,
+                                      },
                                     ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
-                    // QR code display — render label:value pairs when the
-                    // scanned payload is a JSON object; otherwise fall back
-                    // to the trimmed raw string.
-                    final rawQr = effectiveQrCodes[index].toString();
-                    final qrPairs = _tryParseJsonMap(rawQr);
-                    final isPairView = qrPairs != null;
-                    return ListTile(
-                      shape: const Border(),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: spacer2, vertical: spacer1),
-                      title: Container(
-                        margin: const EdgeInsets.only(
-                          left: spacer1,
-                          right: spacer1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: DigitTheme.instance.colorScheme.surface,
-                          border: Border.all(
-                            color: DigitTheme.instance.colorScheme.outline,
-                            width: 1,
-                          ),
-                          borderRadius: const BorderRadius.all(
-                            Radius.circular(4.0),
-                          ),
-                        ),
-                        padding: isPairView
-                            ? const EdgeInsets.all(spacer3)
-                            : const EdgeInsets.only(
-                                left: spacer4,
-                                right: spacer1,
-                                top: spacer3,
-                                bottom: spacer3),
-                        child: Row(
-                          crossAxisAlignment: isPairView
-                              ? CrossAxisAlignment.start
-                              : CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            if (isPairView)
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    for (var i = 0;
-                                        i < qrPairs.entries.length;
-                                        i++)
-                                      Padding(
-                                        // No bottom padding on the last row —
-                                        // the card's own padding provides
-                                        // the trailing gap.
-                                        padding: EdgeInsets.only(
-                                          bottom:
-                                              i == qrPairs.entries.length - 1
-                                                  ? 0
-                                                  : spacer2,
-                                        ),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            // Flex-based label column so long
-                                            // JSON keys don't clip on narrow
-                                            // screens; value gets more room.
-                                            Expanded(
-                                              flex: 4,
-                                              child: Text(
-                                                localizations.translate(qrPairs
-                                                    .entries
-                                                    .elementAt(i)
-                                                    .key),
-                                                style: textTheme.bodyS.copyWith(
-                                                  color: theme.colorTheme.text
-                                                      .secondary,
-                                                ),
-                                                maxLines: 2,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            const SizedBox(width: spacer2),
-                                            Expanded(
-                                              flex: 6,
-                                              child: Text(
-                                                _formatQrValue(qrPairs.entries
-                                                    .elementAt(i)
-                                                    .value),
-                                                style: textTheme.bodyS.copyWith(
-                                                  color: theme.colorTheme.text
-                                                      .primary,
-                                                ),
-                                                maxLines: 3,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              )
-                            else
-                              Flexible(
-                                child: Text(
-                                  overflow: TextOverflow.ellipsis,
-                                  DigitScannerUtils().trimString(rawQr),
-                                ),
-                              ),
-                            SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: ClipRect(
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  icon: Icon(
-                                    Icons.delete,
-                                    color: theme.colorScheme.error,
-                                    size: 24,
                                   ),
-                                  onPressed: () {
-                                    final bloc = context.read<DigitScannerBloc>();
-                                    codes = List.from(effectiveQrCodes);
-                                    codes.removeAt(index);
-                                    setState(() {
-                                      codes = codes;
-                                    });
-                                bloc.add(
-                                  DigitScannerEvent.handleScanner(
-                                    barCode: effectiveBarcodes,
-                                    qrCode: codes,
-                                    regex: widget.effectiveRegex,
-                                    patternMessage: widget.patternMessage,
-                                    scannerId: widget.scannerId,
-                                  ),
-                                );
-                                  },
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    spacer3, spacer2, spacer3, spacer2),
-                child: DigitButton(
-                  label: localizations.translate(i18.common.coreCommonSubmit),
-                  size: DigitButtonSize.large,
-                  mainAxisSize: MainAxisSize.max,
-                  type: DigitButtonType.primary,
-                  onPressed: () async {
-                    if (scannedCount < widget.effectiveQuantity) {
-                      DigitScannerUtils().buildDialog(
-                        context,
-                        localizations,
-                        widget.effectiveQuantity,
-                      );
-                      return;
-                    } else {
-                      final bloc = context.read<DigitScannerBloc>();
-                      bloc.add(DigitScannerEvent.handleScanner(
-                        barCode: effectiveBarcodes,
-                        qrCode: effectiveQrCodes,
-                        scannerId: widget.scannerId,
-                      ));
-                      Navigator.of(context).pop();
-                    }
-                  },
-                ),
-              ),
-            ],
-          ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        spacer3, spacer2, spacer3, spacer2),
+                    child: DigitButton(
+                      label: localizations.translate(i18.common.coreCommonSubmit),
+                      size: DigitButtonSize.large,
+                      mainAxisSize: MainAxisSize.max,
+                      type: DigitButtonType.primary,
+                      onPressed: () async {
+                        if (scannedCount < widget.effectiveQuantity) {
+                          DigitScannerUtils().buildDialog(
+                            context,
+                            localizations,
+                            widget.effectiveQuantity,
+                          );
+                          return;
+                        } else {
+                          final bloc = context.read<DigitScannerBloc>();
+                          bloc.add(DigitScannerEvent.handleScanner(
+                            barCode: effectiveBarcodes,
+                            qrCode: effectiveQrCodes,
+                            scannerId: widget.scannerId,
+                          ));
+                          Navigator.of(context).pop();
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
+  }
+}
+
+/// Reports its child's size after layout whenever it changes.
+class _SizeReporter extends SingleChildRenderObjectWidget {
+  final ValueChanged<Size> onSizeChanged;
+
+  const _SizeReporter({required this.onSizeChanged, super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderSizeReporter(onSizeChanged);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, _RenderSizeReporter renderObject) {
+    renderObject.onSizeChanged = onSizeChanged;
+  }
+}
+
+class _RenderSizeReporter extends RenderProxyBox {
+  ValueChanged<Size> onSizeChanged;
+  Size? _lastSize;
+
+  _RenderSizeReporter(this.onSizeChanged);
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (size == _lastSize) return;
+    _lastSize = size;
+    // Can't rebuild during layout; report after this frame.
+    final reported = size;
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => onSizeChanged(reported));
   }
 }
