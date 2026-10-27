@@ -4689,6 +4689,11 @@ final dynamic sampleBednetFlows = {
                   "value": true,
                   "message":
                       "APPONE_REGISTRATION_DELIVERYDETAILS_label_scanner_mandatory_messager"
+                },
+                {
+                  "type": "scanCountMatch",
+                  "value": "resourceCard.quantityDistributed",
+                  "message": "SCANNED_RESOURCE_COUNT_MISMATCH"
                 }
               ],
               "errorMessage": "",
