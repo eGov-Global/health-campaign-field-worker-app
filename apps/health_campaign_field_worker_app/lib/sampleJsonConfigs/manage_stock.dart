@@ -669,6 +669,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "dateOfEntry",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": true,
               "includeInForm": true,
               "validations": [
@@ -696,6 +697,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "administrativeArea",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "includeInForm": true,
               "validations": [
@@ -723,6 +725,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "facilityToWhich",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -762,6 +765,7 @@ final dynamic sampleInventoryFlows = {
               "mandatory": false,
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "includeInSummary": true,
               "includeInForm": true,
@@ -868,6 +872,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "deliveryTeam",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -895,6 +900,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "transportType",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               // "validations": [
               //   {
@@ -924,6 +930,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "vehicleNumber",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               // "validations": [
               //   {
@@ -983,6 +990,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "wayBillNumber",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1009,6 +1017,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "batchNumber",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1062,6 +1071,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "quantitySent",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1106,6 +1116,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "quantityLost",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1150,6 +1161,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "quantityDamaged",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1202,6 +1214,7 @@ final dynamic sampleInventoryFlows = {
                   }
                 ]
               },
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1246,6 +1259,7 @@ final dynamic sampleInventoryFlows = {
                   }
                 ]
               },
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1277,6 +1291,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "comment",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "visibilityCondition": {
                 "expression": [
@@ -1342,6 +1357,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "scanResource",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "errorMessage": "",
               "isMultiSelect": false,
@@ -1522,6 +1538,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "dateOfEntry",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": true,
               "includeInForm": true,
               "validations": [
@@ -1549,6 +1566,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "administrativeArea",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "includeInForm": true,
               "validations": [
@@ -1576,6 +1594,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "facilityToWhich",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1615,6 +1634,7 @@ final dynamic sampleInventoryFlows = {
               "mandatory": false,
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "includeInSummary": true,
               "validations": [
@@ -1655,6 +1675,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "recordType",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1747,6 +1768,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "deliveryTeam",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1774,6 +1796,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "quantity",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -1805,6 +1828,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "reasonForLessExcess",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "validations": [
                 {
@@ -2701,6 +2725,7 @@ final dynamic sampleInventoryFlows = {
               "value": "{{sku}}",
               "format": "text",
               "fieldName": "resource",
+              "schemaCode": null,
               "displayOnly": true
             },
             {
@@ -2710,6 +2735,7 @@ final dynamic sampleInventoryFlows = {
               "value": "{{mrnNumber}}",
               "format": "text",
               "fieldName": "materialIssueNumber",
+              "schemaCode": null,
               "displayOnly": true
             },
             {
@@ -2719,6 +2745,7 @@ final dynamic sampleInventoryFlows = {
               "value": "{{senderFacilityId}}",
               "format": "text",
               "fieldName": "receivedFrom",
+              "schemaCode": null,
               "displayOnly": true
             },
             {
@@ -2735,6 +2762,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "wayBillNumber",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "visibilityCondition": {},
               "validations": [],
@@ -2756,6 +2784,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "batchNumber",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "visibilityCondition": {},
               "validations": [],
@@ -2777,6 +2806,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "expiryDate",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "visibilityCondition": {},
               "errorMessage": "",
@@ -2797,6 +2827,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "quantity",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "visibilityCondition": {},
               "validations": [
@@ -2829,6 +2860,7 @@ final dynamic sampleInventoryFlows = {
               "fieldName": "comment",
               "deleteFlag": false,
               "innerLabel": "",
+              "schemaCode": null,
               "systemDate": false,
               "visibilityCondition": {},
               "validations": [
