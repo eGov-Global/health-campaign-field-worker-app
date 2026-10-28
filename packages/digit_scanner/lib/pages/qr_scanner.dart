@@ -234,8 +234,17 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
       try {
         final parser = GS1BarcodeParser.defaultParser();
         final parsedBarcodes = <GS1Barcode>[];
-        final deserializedMaps = DigitScannerUtils.deserializeGs1Barcodes(
-            widget.initialBarcodeData!);
+        // Deserialize one barcode at a time so each keeps its manual-entry
+        // marker when it is serialized again.
+        final deserializedMaps = <Map<String, String>>[];
+        final manualMaps = Set<Map<String, String>>.identity();
+        for (final barcodeStr in widget.initialBarcodeData!.split(';')) {
+          final maps = DigitScannerUtils.deserializeGs1Barcodes(barcodeStr);
+          deserializedMaps.addAll(maps);
+          if (DigitScannerUtils.isManualEntry(barcodeStr)) {
+            manualMaps.addAll(maps);
+          }
+        }
 
         for (final map in deserializedMaps) {
           final gtin = map['01'] ?? '';
@@ -261,7 +270,10 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
             gtin: gtin,
           );
 
-          parsedBarcodes.add(parser.parse(barcodeString));
+          final parsed = parser.parse(barcodeString);
+          parsedBarcodes.add(manualMaps.contains(map)
+              ? ManualGS1Barcode.from(parsed)
+              : parsed);
         }
 
         if (parsedBarcodes.isNotEmpty) {
@@ -639,7 +651,8 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
 
                               // Now parse it using your existing model
                               final parser = GS1BarcodeParser.defaultParser();
-                              final parsed = parser.parse(barcodeString);
+                              final parsed = ManualGS1Barcode.from(
+                                  parser.parse(barcodeString));
                               // ✅ Append to existing barcodes; DO NOT touch qrCodes in GS1 mode
                               // Use local result as fallback when bloc state is empty
                               final existingBarcodes = state.barCodes.isNotEmpty
@@ -650,7 +663,8 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
                               if (widget.duplicateCheckFn != null) {
                                 try {
                                   final serialized = DigitScannerUtils()
-                                      .serializeGs1Barcodes([parsed]);
+                                      .serializeGs1Barcodes([parsed],
+                                          withManualPrefix: false);
                                   final isDuplicate =
                                       await widget.duplicateCheckFn!(
                                           serialized);
@@ -684,11 +698,13 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
                               // to avoid false positives when serial number is
                               // optional and the last AI varies.
                               final newSerialized = DigitScannerUtils()
-                                  .serializeGs1Barcodes([parsed]);
+                                  .serializeGs1Barcodes([parsed],
+                                      withManualPrefix: false);
                               final alreadyScanned =
                                   existingBarcodes.any((element) {
                                 final existingSerialized = DigitScannerUtils()
-                                    .serializeGs1Barcodes([element]);
+                                    .serializeGs1Barcodes([element],
+                                        withManualPrefix: false);
                                 return existingSerialized == newSerialized;
                               });
 

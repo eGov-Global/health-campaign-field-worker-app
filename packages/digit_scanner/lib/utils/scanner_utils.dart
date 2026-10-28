@@ -160,11 +160,11 @@ class DigitScannerUtils {
             // Check if the barcode has already been scanned
             // Compare full serialized form (all AI elements) to avoid false
             // positives when serial number is optional and the last AI varies.
-            final newSerialized =
-                DigitScannerUtils().serializeGs1Barcodes([parsedResult]);
+            final newSerialized = DigitScannerUtils()
+                .serializeGs1Barcodes([parsedResult], withManualPrefix: false);
             final alreadyScanned = bloc.state.barCodes.any((element) {
-              final existingSerialized =
-                  DigitScannerUtils().serializeGs1Barcodes([element]);
+              final existingSerialized = DigitScannerUtils()
+                  .serializeGs1Barcodes([element], withManualPrefix: false);
               return existingSerialized == newSerialized;
             });
 
@@ -367,7 +367,8 @@ class DigitScannerUtils {
 
     // Remove duplicate entries based on the full serialized barcode
     result.removeDuplicates(
-      (element) => DigitScannerUtils().serializeGs1Barcodes([element]),
+      (element) => DigitScannerUtils()
+          .serializeGs1Barcodes([element], withManualPrefix: false),
     );
 
     // Add the new parsed result to the list
@@ -403,10 +404,28 @@ class DigitScannerUtils {
     return {};
   }
 
+  /// Prefix marking a serialized GS1 barcode that was typed in on the
+  /// manual-entry form instead of scanned, e.g. `(manual)01:GTIN|10:BATCH`.
+  static const manualEntryPrefix = '(manual)';
+
+  /// Whether a single serialized barcode carries [manualEntryPrefix].
+  static bool isManualEntry(String barcode) =>
+      barcode.trim().startsWith(manualEntryPrefix);
+
+  /// Returns a single serialized barcode without [manualEntryPrefix].
+  static String stripManualPrefix(String barcode) => isManualEntry(barcode)
+      ? barcode.trim().substring(manualEntryPrefix.length)
+      : barcode;
+
   /// Serializes GS1 barcode data to a form value string.
   /// Format: key1:value1|key2:value2 per barcode, semicolons between barcodes.
   /// Only includes entries with non-empty values.
-  String serializeGs1Barcodes(List<GS1Barcode> barCodes) {
+  ///
+  /// A [ManualGS1Barcode] is prefixed with [manualEntryPrefix]. Pass
+  /// [withManualPrefix] false when the result is used to compare codes, so a
+  /// manual entry still matches the same code scanned with the camera.
+  String serializeGs1Barcodes(List<GS1Barcode> barCodes,
+      {bool withManualPrefix = true}) {
     final barcodeStrings = <String>[];
     for (int i = 0; i < barCodes.length; i++) {
       final gs1Data = getGs1CodeFormattedStringAtIndex(barCodes, i);
@@ -420,7 +439,10 @@ class DigitScannerUtils {
         }
       }
       if (parts.isNotEmpty) {
-        barcodeStrings.add(parts.join('|'));
+        final prefix = withManualPrefix && barCodes[i] is ManualGS1Barcode
+            ? manualEntryPrefix
+            : '';
+        barcodeStrings.add('$prefix${parts.join('|')}');
       }
     }
     return barcodeStrings.join(';');
@@ -428,9 +450,10 @@ class DigitScannerUtils {
 
   /// Deserializes a GS1 barcode form value string back to a list of key-value maps.
   /// Supports both new format (key:value|key:value) and legacy format (gtin,serial,batch,expiry).
+  /// A leading [manualEntryPrefix] is dropped; use [isManualEntry] to read it.
   static List<Map<String, String>> deserializeGs1Barcodes(String data) {
     final result = <Map<String, String>>[];
-    final barcodeStrings = data.split(';');
+    final barcodeStrings = data.split(';').map(stripManualPrefix);
     for (final barcodeStr in barcodeStrings) {
       if (barcodeStr.trim().isEmpty) continue;
       // New format: contains '|' or starts with a 2-digit AI code followed by ':'
@@ -490,4 +513,13 @@ class DigitScannerUtils {
         : '';
     return '${gtinPart}10$batchNumber${groupSeparator}17$formattedDate$serialPart';
   }
+}
+
+/// A [GS1Barcode] the user typed in on the manual-entry form instead of
+/// scanning. [DigitScannerUtils.serializeGs1Barcodes] writes it with
+/// [DigitScannerUtils.manualEntryPrefix] so the stored value records how the
+/// code was captured.
+class ManualGS1Barcode extends GS1Barcode {
+  ManualGS1Barcode.from(GS1Barcode barcode)
+      : super(code: barcode.code, elements: barcode.elements);
 }

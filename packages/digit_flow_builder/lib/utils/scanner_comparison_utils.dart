@@ -10,6 +10,12 @@ import 'package:flutter/foundation.dart';
 class ScannerComparisonUtils {
   const ScannerComparisonUtils._();
 
+  /// Prefix the scanner writes before a GS1 barcode typed in on its
+  /// manual-entry form, e.g. `(manual)01:GTIN|10:BATCH`. Mirrors
+  /// `DigitScannerUtils.manualEntryPrefix`; kept here because this package
+  /// may resolve a digit_scanner release that predates it.
+  static const manualEntryPrefix = '(manual)';
+
   /// Finds the [ComparisonConfig] for a given scanner field name in the schema.
   ///
   /// Handles multiEntityConfig suffix stripping: form control names like
@@ -205,12 +211,13 @@ class ScannerComparisonUtils {
       }
     }
 
-    // 4. For "column" match, add scanned value as direct filter
+    // 4. For "column" match, add scanned value as direct filter. The same
+    // code may be stored with the manual-entry prefix, so match that too.
     if (config.extractFrom == 'column') {
       resolvedFilters.add(SearchFilter(
         field: config.extractKey,
-        operator: 'equals',
-        value: scannedValue,
+        operator: 'in',
+        value: [scannedValue, '$manualEntryPrefix$scannedValue'],
         root: config.model,
       ));
     }
@@ -403,7 +410,11 @@ class ScannerComparisonUtils {
   static List<String> extractComparisonValues(String serializedData) {
     final values = <String>[];
     for (final barcode in serializedData.split(';')) {
-      final trimmed = barcode.trim();
+      var trimmed = barcode.trim();
+      // A manually entered code matches the same code scanned by camera
+      if (trimmed.startsWith(manualEntryPrefix)) {
+        trimmed = trimmed.substring(manualEntryPrefix.length).trim();
+      }
       if (trimmed.isEmpty) continue;
       // Always add the full barcode string for full-match comparison
       values.add(trimmed);

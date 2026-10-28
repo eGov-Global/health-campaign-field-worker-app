@@ -47,6 +47,22 @@ void main() {
         isFalse,
       );
     });
+
+    test('matches GS1 barcodes stored with the manual-entry prefix', () {
+      const stored = '(manual)01:123|10:B1;01:456|10:B2';
+      expect(
+        ScannerComparisonUtils.storedValueContains(stored, '01:123|10:B1'),
+        isTrue,
+      );
+      expect(
+        ScannerComparisonUtils.storedValueContains(stored, '10:B1|01:123'),
+        isTrue,
+      );
+      expect(
+        ScannerComparisonUtils.storedValueContains(stored, '01:123|10:B2'),
+        isFalse,
+      );
+    });
   });
 
   group('jsonSafeFragments', () {
