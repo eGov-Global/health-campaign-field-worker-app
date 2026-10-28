@@ -4697,6 +4697,7 @@ final dynamic sampleBednetFlows = {
               "schemaCode": null,
               "systemDate": false,
               "validations": [
+                {"type": "isGS1", "value": true, "message": ""},
                 {
                   "type": "required",
                   "value": true,
