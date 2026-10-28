@@ -104,23 +104,6 @@ final dynamic sampleInventoryFlows = {
                 "data": []
               }
             }
-            // {
-            //   "actionType": "NAVIGATION",
-            //   "properties": {
-            //     "type": "FORM",
-            //     "name": "RECORDSTOCK",
-            //     "data": [
-            //       {"key": "stockEntryType", "value": "RECEIPT"},
-            //       {"key": "transactionType", "value": "RECEIVED"},
-            //       {"key": "primaryRole", "value": "RECEIVER"},
-            //       {"key": "secondaryRole", "value": "SENDER"},
-            //       {
-            //         "key": "mrnNumber",
-            //         "value": "{{fn:generateUniqueMaterialNoteNumber()}}"
-            //       }
-            //     ]
-            //   }
-            // }
           ]
         },
         {
@@ -129,7 +112,7 @@ final dynamic sampleInventoryFlows = {
               "APP_CONFIG_INVENTORY_manageStock_RECORD_STOCK_ISSUED_HEADING",
           "description":
               "APP_CONFIG_INVENTORY_manageStock_CREATE_RECORDS_FOR_STOCK_SENT_OUT_FROM_THE_WAREHOUSE_DESCRIPTION",
-          "icon": 'FileUpload',
+          "icon": "FileUpload",
           "onAction": [
             {
               "actionType": "NAVIGATION",
@@ -148,7 +131,7 @@ final dynamic sampleInventoryFlows = {
           "visible": "{{fn:hasRole('WAREHOUSE_MANAGER')}} == false",
           "description":
               "APP_CONFIG_INVENTORY_manageStock_RECORD_THE_LIST_OF_RESOURCES_DAMAGED_DURING_CAMPAIGN_OPERATIONS_DESCRIPTION",
-          "icon": 'Store',
+          "icon": "Store",
           "onAction": [
             {
               "actionType": "NAVIGATION",
@@ -176,7 +159,7 @@ final dynamic sampleInventoryFlows = {
           "visible": "{{fn:hasRole('DISTRIBUTOR')}} == true",
           "description":
               "APP_CONFIG_INVENTORY_manageStock_RECORD_THE_LIST_OF_RESOURCES_LOST_DURING_CAMPAIGN_OPERATIONS_DESCRIPTION",
-          "icon": 'Store',
+          "icon": "Store",
           "onAction": [
             {
               "actionType": "NAVIGATION",
@@ -222,7 +205,7 @@ final dynamic sampleInventoryFlows = {
               }
             }
           ]
-        },
+        }
       ]
     },
     {
@@ -353,7 +336,7 @@ final dynamic sampleInventoryFlows = {
                   "code": "RETURNED"
                 }
               ],
-              "visible": "{{fn:hasRole('DISTRIBUTOR')}} == false",
+              "visible": "{{fn:hasRole('DISTRIBUTOR')}} == false"
             },
             {
               "type": "template",
@@ -373,7 +356,7 @@ final dynamic sampleInventoryFlows = {
               "showWhenSingleOption": true
             }
           ]
-        },
+        }
       ]
     },
     {
@@ -738,7 +721,7 @@ final dynamic sampleInventoryFlows = {
               "errorMessage": "",
               "isMultiSelect": false,
               "includeInForm": true,
-              "enums": [],
+              "enums": []
             },
             {
               "type": "string",
@@ -780,7 +763,7 @@ final dynamic sampleInventoryFlows = {
               "errorMessage": "",
               "isMultiSelect": false,
               "dropDownOptions": []
-            },
+            }
           ],
           "navigateTo": {"name": "stockDetails", "type": "form"}
         },
@@ -884,7 +867,7 @@ final dynamic sampleInventoryFlows = {
               ],
               "errorMessage": "",
               "isMultiSelect": false,
-              "enums": [],
+              "enums": []
             },
             {
               "type": "string",
@@ -902,13 +885,6 @@ final dynamic sampleInventoryFlows = {
               "innerLabel": "",
               "schemaCode": null,
               "systemDate": false,
-              // "validations": [
-              //   {
-              //     "type": "required",
-              //     "value": true,
-              //     "message": "Transport type is required"
-              //   }
-              // ],
               "errorMessage": "",
               "isMultiSelect": false,
               "enums": [
@@ -932,17 +908,10 @@ final dynamic sampleInventoryFlows = {
               "innerLabel": "",
               "schemaCode": null,
               "systemDate": false,
-              // "validations": [
-              //   {
-              //     "type": "required",
-              //     "value": true,
-              //     "message": "Vehicle number is required"
-              //   }
-              // ],
               "errorMessage": "",
               "isMultiSelect": false,
               "enums": null
-            },
+            }
           ],
           "value": null,
           "required": null,
@@ -1030,33 +999,6 @@ final dynamic sampleInventoryFlows = {
               "isMultiSelect": false,
               "enums": null
             },
-            // {
-            //   "type": "string",
-            //   "label": "APPONE_INVENTORY_EXPIRY_DATE_LABEL",
-            //   "order": 3,
-            //   "value": "",
-            //   "format": "date",
-            //   "hidden": false,
-            //   "tooltip": "",
-            //   "helpText": "",
-            //   "infoText": "",
-            //   "readOnly": false,
-            //   "fieldName": "expiryDate",
-            //   "deleteFlag": false,
-            //   "innerLabel": "",
-            //   "systemDate": false,
-            //   "visibilityCondition": {},
-            //   "validations": [
-            //     {
-            //       "type": "required",
-            //       "value": true,
-            //       "message": "Expiry date is required"
-            //     }
-            //   ],
-            //   "errorMessage": "",
-            //   "isMultiSelect": false,
-            //   "enums": null
-            // },
             {
               "type": "integer",
               "label": "APPONE_INVENTORY_QUANTITY_SENT_LABEL",
@@ -1361,8 +1303,8 @@ final dynamic sampleInventoryFlows = {
               "systemDate": false,
               "errorMessage": "",
               "isMultiSelect": false,
-              "enums": [],
-            },
+              "enums": []
+            }
           ],
           "value": null,
           "required": null,
@@ -1381,7 +1323,7 @@ final dynamic sampleInventoryFlows = {
           "includeInSummary": null,
           "autoEnable": null,
           "navigateTo": {"name": "stock-acknowledgement", "type": "template"}
-        },
+        }
       ],
       "onAction": [
         {
@@ -1780,7 +1722,7 @@ final dynamic sampleInventoryFlows = {
               ],
               "errorMessage": "",
               "isMultiSelect": false,
-              "enums": [],
+              "enums": []
             },
             {
               "type": "integer",
@@ -1968,7 +1910,7 @@ final dynamic sampleInventoryFlows = {
                   "type": "TEMPLATE",
                   "name": "manageStock",
                   "navigationMode": "popUntilAndReplace",
-                  "popUntilPageName": "manageStock",
+                  "popUntilPageName": "manageStock"
                 }
               }
             ]
@@ -1988,7 +1930,7 @@ final dynamic sampleInventoryFlows = {
           "onAction": [
             {"actionType": "BACK_NAVIGATION", "properties": {}}
           ]
-        },
+        }
       ],
       "footer": [],
       "initActions": [
@@ -2024,7 +1966,7 @@ final dynamic sampleInventoryFlows = {
         "groupBy": "additionalFields.fields.mrnNumber",
         "filters": [],
         "relations": [
-          {"name": "stock", "entity": "StockModel"},
+          {"name": "stock", "entity": "StockModel"}
         ],
         "searchConfig": {
           "primary": "stock",
@@ -2164,10 +2106,10 @@ final dynamic sampleInventoryFlows = {
                     }
                   }
                 ]
-              },
+              }
             ]
           },
-          "properties": {"spacing": "spacer4"},
+          "properties": {"spacing": "spacer4"}
         }
       ]
     },
@@ -2211,14 +2153,11 @@ final dynamic sampleInventoryFlows = {
         "rootEntity": "StockModel",
         "filters": [],
         "relations": [
-          {
-            "name": "stock",
-            "entity": "StockModel",
-          }
+          {"name": "stock", "entity": "StockModel"}
         ],
         "searchConfig": {
           "primary": "stock",
-          "select": ["stock"],
+          "select": ["stock"]
         }
       },
       "body": [
@@ -2262,11 +2201,6 @@ final dynamic sampleInventoryFlows = {
                     "key": "INVENTORY_BATCH_NUMBER_LABEL",
                     "value": "{{item.additionalFields.fields.batchNumber}}"
                   },
-                  // {
-                  //   "key": "INVENTORY_EXPIRY_LABEL",
-                  //   "value":
-                  //       "{{fn:formatDate(item.additionalFields.fields.expiryDate, 'date', dd MMM yyyy)}}"
-                  // },
                   {
                     "key":
                         "{{fn:getQuantityLabel(item.additionalFields.fields.sku)}}",
@@ -2280,7 +2214,7 @@ final dynamic sampleInventoryFlows = {
               }
             ]
           },
-          "properties": {"spacing": "spacer4"},
+          "properties": {"spacing": "spacer4"}
         }
       ]
     },
@@ -2380,7 +2314,7 @@ final dynamic sampleInventoryFlows = {
                 "key": "productVariantId",
                 "value": "{{fn:getProjectProductVariantIds()}}",
                 "operation": "in"
-              },
+              }
             ]
           }
         }
@@ -2687,7 +2621,7 @@ final dynamic sampleInventoryFlows = {
               }
             ]
           }
-        },
+        }
       ],
       "wrapperConfig": {
         "wrapperName": "StockReceiptDetailsWrapper",
