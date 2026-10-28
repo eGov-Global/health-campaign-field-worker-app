@@ -2758,6 +2758,19 @@ final dynamic sampleBednetFlows = {
                   }
                 ]
               },
+              "comparisonConfig": {
+                "model": "projectBeneficiary",
+                "extractFrom": "column",
+                "extractKey": "tag",
+                "filters": [
+                  {
+                    "key": "beneficiaryClientReferenceId",
+                    "operation": "notEquals",
+                    "value": "{{navigation.HouseholdClientReferenceId}}"
+                  }
+                ],
+                "errorMessage": "RESOURCES_ALREADY_SCANNED"
+              },
               "errorMessage": "",
               "isMultiSelect": false,
               "includeInSummary": true
