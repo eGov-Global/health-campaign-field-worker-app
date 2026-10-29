@@ -41,6 +41,8 @@ class TransformerExecutor extends ActionExecutor {
     final fallBackModel = jsonConfig[configName]?['fallbackModel'] as String?;
     final multiEntityField =
         jsonConfig[configName]?['multiEntityField'] as String?;
+    final scanCounts =
+        jsonConfig[configName]?['scanCounts'] as Map<String, dynamic>?;
 
     // Determine which form data to use
     Map<String, dynamic>? formValuesToUse = contextData['formData'];
@@ -212,6 +214,8 @@ class TransformerExecutor extends ActionExecutor {
       "beneficiaryType": FlowBuilderSingleton().beneficiaryType?.toValue(),
     };
 
+    formValuesToUse = _applyScanCounts(formValuesToUse, scanCounts);
+
     List<EntityModel> entities = [];
 
     // Use updateEntitiesFromForm for edit mode with existing models
@@ -285,6 +289,9 @@ class TransformerExecutor extends ActionExecutor {
 
           // Map entity-specific fields (with _item_N suffix) to base field names
           modifiedFormValues = _mapEntityFieldsToBase(modifiedFormValues, i);
+          // Scanner fields are per entity, so count them after the mapping
+          modifiedFormValues =
+              _applyScanCounts(modifiedFormValues, scanCounts)!;
 
           try {
             final itemEntities = formEntityMapper.mapFormToEntities(
@@ -414,6 +421,53 @@ class TransformerExecutor extends ActionExecutor {
         ),
       );
     }).toList();
+  }
+
+  /// Writes the number of codes scanned into each source field of
+  /// [scanCounts] (target path -> scanner field path) to its target path,
+  /// e.g. `stockProductDetails.balesQuantity` from
+  /// `stockProductDetails.scanResource`. Nothing is written for a field with
+  /// no scans. Copies each map it changes so [formValues] is left untouched.
+  Map<String, dynamic>? _applyScanCounts(
+    Map<String, dynamic>? formValues,
+    Map<String, dynamic>? scanCounts,
+  ) {
+    if (formValues == null || scanCounts == null) return formValues;
+
+    final result = Map<String, dynamic>.from(formValues);
+    scanCounts.forEach((targetPath, sourcePath) {
+      final count =
+          _countScannedCodes(_getNestedValue(result, sourcePath as String));
+      if (count == 0) return;
+
+      final keys = targetPath.split('.');
+      var current = result;
+      for (final key in keys.take(keys.length - 1)) {
+        final next = current[key];
+        final copy = next is Map<String, dynamic>
+            ? Map<String, dynamic>.from(next)
+            : <String, dynamic>{};
+        current[key] = copy;
+        current = copy;
+      }
+      current[keys.last] = count;
+    });
+    return result;
+  }
+
+  /// Counts the codes held by a scanner field value. QR codes are stored
+  /// comma-separated; GS1 barcodes are stored ';'-separated, with '|' between
+  /// the parts of one barcode. Mirrors `countScannedCodes` in
+  /// digit_forms_engine, which the resolved release may not include.
+  int _countScannedCodes(dynamic value) {
+    if (value == null) return 0;
+    final raw = value.toString().trim();
+    if (raw.isEmpty) return 0;
+    final isGs1 = raw.contains('|') || RegExp(r'^\d{2}:').hasMatch(raw);
+    return raw
+        .split(isGs1 ? ';' : ',')
+        .where((code) => code.trim().isNotEmpty)
+        .length;
   }
 
   /// Helper method to get a nested value from a map using dot notation

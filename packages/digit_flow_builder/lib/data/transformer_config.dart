@@ -899,6 +899,10 @@ final jsonConfig = {
   "stock": {
     "fallbackModel": "StockModel",
     "multiEntityField": "stockDetails.productdetail",
+    // Form value -> scanner field whose scanned-code count it holds
+    "scanCounts": {
+      "stockProductDetails.balesQuantity": "stockProductDetails.scanResource",
+    },
     "models": {
       "StockModel": {
         "mappings": {
@@ -946,6 +950,7 @@ final jsonConfig = {
             "status":
                 "__switch:__context:stockEntryType:{ISSUED:__value:IN_TRANSIT,RETURNED:__value:IN_TRANSIT,LOSS:__value:LOST,DAMAGED:__value:DAMAGED}",
             "scanResource": "stockProductDetails.scanResource",
+            "balesQuantity": "stockProductDetails.balesQuantity",
           },
           "clientAuditDetails": "__generate:clientAudit",
           "auditDetails": "__generate:audit",
