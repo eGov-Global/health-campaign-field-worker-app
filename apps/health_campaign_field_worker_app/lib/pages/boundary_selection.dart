@@ -710,7 +710,7 @@ class _BoundarySelectionPageState
                                             size: DigitButtonSize.large,
                                             onPressed: () async {
                                               if (!form.valid ||
-                                                  validateAllBoundarySelection()) {
+                                                  validateRequiredBoundarySelection()) {
                                                 clickedStatus.value = false;
                                                 Toast.showToast(
                                                   context,
@@ -901,7 +901,8 @@ class _BoundarySelectionPageState
                                               capitalizedFirstLetter: false,
                                               label: localizations.translate(
                                                   '${runtimeHierarchyType()}_$label'),
-                                              isRequired: true,
+                                              // Only the first level is mandatory.
+                                              isRequired: labelIndex == 0,
                                               child: (isLastLevel &&
                                                       !isSingleItemLastLevel)
                                                   ? MultiSelectDropDown(
@@ -1326,14 +1327,14 @@ class _BoundarySelectionPageState
     return fb.group(formControls);
   }
 
-  bool validateAllBoundarySelection() {
-    for (final entry in formControls.entries) {
-      final formControl = entry.value;
-
-      if (formControl.value == null) {
-        formControl.setErrors({'': true});
-        return true;
-      }
+  /// Only the first (top) boundary level is mandatory; deeper levels are
+  /// optional. Returns true (and flags the field) when the first level is
+  /// not selected.
+  bool validateRequiredBoundarySelection() {
+    final firstControl = formControls.values.firstOrNull;
+    if (firstControl != null && firstControl.value == null) {
+      firstControl.setErrors({'': true});
+      return true;
     }
 
     return false;
