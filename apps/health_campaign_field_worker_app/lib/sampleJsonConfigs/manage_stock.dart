@@ -2606,6 +2606,77 @@ final dynamic sampleInventoryFlows = {
           }
         }
       ],
+      // Decline button handler. The forms engine only renders the
+      // secondaryActionLabel button when this list is present.
+      "onSecondaryAction": [
+        {
+          "actionType": "FETCH_TRANSFORMER_CONFIG",
+          "properties": {
+            "configName": "stockReject",
+            "forceCreate": true,
+            "data": [
+              {"key": "transactionType", "value": "DISPATCHED"},
+              {"key": "primaryRole", "value": "SENDER"},
+              {"key": "secondaryRole", "value": "RECEIVER"},
+              {"key": "mrnNumber", "value": "{{navigation.mrnNumber}}"},
+              {
+                "key": "senderFacilityId",
+                "value": "{{fn:getUserFacilityId()}}"
+              },
+              {
+                "key": "receiverFacilityId",
+                "value": "{{navigation.senderFacilityId}}"
+              },
+              {
+                "key": "productVariantId",
+                "value": "{{navigation.productVariantId}}"
+              },
+              {"key": "userFacilityId", "value": "{{fn:getUserFacilityId()}}"},
+              {
+                "key": "userFacilityType",
+                "value": "{{fn:getUserFacilityType()}}"
+              },
+              {"key": "sku", "value": "{{navigation.sku}}"},
+              {"key": "quantity", "value": "{{navigation.quantity}}"}
+            ],
+            "onError": [
+              {
+                "actionType": "SHOW_TOAST",
+                "properties": {"message": "Failed to fetch config."}
+              }
+            ]
+          }
+        },
+        {
+          "actionType": "UPDATE_EVENT",
+          "properties": {
+            "source": "existingModels",
+            "entity": "StockModel",
+            "modify": [
+              {
+                "key": "StockModel.additionalFields.fields.status",
+                "value": "REJECTED"
+              }
+            ]
+          }
+        },
+        {
+          "actionType": "SHOW_TOAST",
+          "properties": {
+            "message": "INVENTORY_STOCK_REJECTED_SUCCESS",
+            "type": "success"
+          }
+        },
+        {
+          "actionType": "NAVIGATION",
+          "properties": {
+            "type": "TEMPLATE",
+            "name": "manageStock",
+            "navigationMode": "popUntilAndReplace",
+            "popUntilPageName": "manageStock"
+          }
+        }
+      ],
       "initActions": [
         {
           "actionType": "SEARCH_EVENT",
@@ -2650,6 +2721,21 @@ final dynamic sampleInventoryFlows = {
             "description": "INVENTORY_ACCEPT_CONFIRMATION_DESCRIPTION",
             "primaryActionLabel": "INVENTORY_ACCEPT_CONFIRM_ACTION",
             "secondaryActionLabel": "INVENTORY_ACCEPT_CANCEL_ACTION"
+          },
+          "showSecondaryAlertPopUp": {
+            "title": "INVENTORY_REJECT_CONFIRMATION_TITLE",
+            "description": "INVENTORY_REJECT_CONFIRMATION_DESCRIPTION",
+            "primaryActionLabel": "INVENTORY_REJECT_CONFIRM_ACTION",
+            "secondaryActionLabel": "INVENTORY_REJECT_CANCEL_ACTION",
+            "body": [
+              {
+                "type": "string",
+                "label": "INVENTORY_REJECT_COMMENT_LABEL",
+                "format": "textArea",
+                "fieldName": "rejectComment",
+                "mandatory": true
+              }
+            ]
           },
           "properties": [
             {
