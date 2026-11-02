@@ -112,6 +112,7 @@ class UserActionModel extends EntityModel with UserActionModelMappable {
       nonRecoverableError: Value(nonRecoverableError),
       timestamp: Value(timestamp ?? 0),
       id: Value(id),
+      rowVersion: Value(rowVersion),
     );
   }
 }

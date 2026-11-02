@@ -225,6 +225,17 @@ class _BoundarySelectionPageState
 
     bool isHealthFacilityWorkerOnly = isHealthFacilityWorker && !isDistributor;
 
+    bool isRegistrar = context.loggedInUserRoles
+        .where(
+          (role) => role.code == RolesType.registrar.toValue(),
+        )
+        .toList()
+        .isNotEmpty;
+
+    // Registrars and distributors must select every boundary level; for
+    // other roles only the first level is mandatory.
+    bool isAllBoundariesRequired = isRegistrar || isDistributor;
+
     return PopScope(
       canPop: shouldPop,
       child: BlocBuilder<AppInitializationBloc, AppInitializationState>(
@@ -710,7 +721,9 @@ class _BoundarySelectionPageState
                                             size: DigitButtonSize.large,
                                             onPressed: () async {
                                               if (!form.valid ||
-                                                  validateRequiredBoundarySelection()) {
+                                                  validateRequiredBoundarySelection(
+                                                      requireAll:
+                                                          isAllBoundariesRequired)) {
                                                 clickedStatus.value = false;
                                                 Toast.showToast(
                                                   context,
@@ -901,8 +914,9 @@ class _BoundarySelectionPageState
                                               capitalizedFirstLetter: false,
                                               label: localizations.translate(
                                                   '${runtimeHierarchyType()}_$label'),
-                                              // Only the first level is mandatory.
-                                              isRequired: labelIndex == 0,
+                                              isRequired:
+                                                  isAllBoundariesRequired ||
+                                                      labelIndex == 0,
                                               child: (isLastLevel &&
                                                       !isSingleItemLastLevel)
                                                   ? MultiSelectDropDown(
@@ -1327,14 +1341,18 @@ class _BoundarySelectionPageState
     return fb.group(formControls);
   }
 
-  /// Only the first (top) boundary level is mandatory; deeper levels are
-  /// optional. Returns true (and flags the field) when the first level is
-  /// not selected.
-  bool validateRequiredBoundarySelection() {
-    final firstControl = formControls.values.firstOrNull;
-    if (firstControl != null && firstControl.value == null) {
-      firstControl.setErrors({'': true});
-      return true;
+  /// Returns true (and flags the field) when a mandatory boundary level is
+  /// not selected. Every level is mandatory when [requireAll] is set;
+  /// otherwise only the first (top) level is.
+  bool validateRequiredBoundarySelection({bool requireAll = false}) {
+    final requiredControls =
+        requireAll ? formControls.values : formControls.values.take(1);
+
+    for (final formControl in requiredControls) {
+      if (formControl.value == null) {
+        formControl.setErrors({'': true});
+        return true;
+      }
     }
 
     return false;
