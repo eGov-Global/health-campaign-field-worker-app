@@ -2508,7 +2508,7 @@ final dynamic sampleBednetFlows = {
               "label":
                   "APPONE_REGISTRATION_BENEFICIARYDETAILS_label_isHeadOfFamily",
               "order": 3,
-              "value": "",
+              "value": true,
               "format": "checkbox",
               "hidden": false,
               "isMdms": false,
@@ -2628,7 +2628,14 @@ final dynamic sampleBednetFlows = {
                 {"code": "MALE", "name": "MALE"},
                 {"code": "FEMALE", "name": "FEMALE"}
               ],
-              "validations": [],
+              "validations": [
+                {
+                  "type": "required",
+                  "value": true,
+                  "message":
+                      "APPONE_REGISTRATION_BENEFICIARYDETAILS_label_gender_mandatory_message"
+                }
+              ],
               "errorMessage": "",
               "isMultiSelect": false
             },
@@ -4697,7 +4704,7 @@ final dynamic sampleBednetFlows = {
               "schemaCode": null,
               "systemDate": false,
               "validations": [
-                {"type": "isGS1", "value": true, "message": ""},
+                {"type": "isGS1", "value": false, "message": ""},
                 {
                   "type": "required",
                   "value": true,
