@@ -136,6 +136,23 @@ extension ContextUtilityExtensions on BuildContext {
     }
   }
 
+  /// JSON payload of the logged-in user's identity QR, shown in the
+  /// hamburger menu and on the QR details page. Scanned by the
+  /// delivery-team scanner fields in the stock flows: `userId` fills the
+  /// form control, while `boundaryCode` and `campaignId` are only used for
+  /// reject-at-scan validation (see `_registerScannerIdentityValidator`
+  /// in authenticated.dart).
+  ///
+  /// `campaignId` is the project `referenceID` (the campaign number), which
+  /// is shared by every project in a campaign — unlike `project.id`, which
+  /// differs between a warehouse manager's and a distributor's projects.
+  String get userIdentityQrData => jsonEncode({
+        'userId': loggedInUserUuid,
+        'boundaryCode': boundaryOrNull?.code ?? '',
+        'campaignId':
+            _get<ProjectBloc>().state.selectedProject?.referenceID ?? '',
+      });
+
   List<UserRoleModel> get loggedInUserRoles {
     final authBloc = _get<AuthBloc>();
     final userRequestObject = authBloc.state.whenOrNull(

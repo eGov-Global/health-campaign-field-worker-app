@@ -419,6 +419,9 @@ class Common {
 
   String get qrAttendance => 'QR_ATTENDANCE';
 
+  String get scannedUserDifferentCampaign =>
+      'CORE_COMMON_SCANNED_USER_DIFFERENT_CAMPAIGN';
+
   String get progressIndicatorPrefixLabelHFReferral =>
       'PROGRESS_INDICATOR_PREFIX_LABEL_HFREFERRAL';
 

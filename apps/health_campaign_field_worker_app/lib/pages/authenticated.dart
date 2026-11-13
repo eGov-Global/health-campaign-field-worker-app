@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:digit_data_model/data_model.dart';
@@ -36,6 +35,7 @@ import '../blocs/auth/auth.dart';
 import '../blocs/hf_referral_downsync/hf_referral_downsync.dart';
 import '../blocs/localization/app_localization.dart';
 import '../blocs/localization/localization.dart';
+import '../blocs/project/project.dart';
 import '../blocs/projects_beneficiary_downsync/project_beneficiaries_downsync.dart';
 import '../blocs/stock_downsync/stock_downsync.dart';
 import '../data/local_store/no_sql/schema/service_registry.dart';
@@ -177,9 +177,28 @@ class _AuthenticatedPageWrapperState extends State<AuthenticatedPageWrapper>
   /// separator). This handles the common case where a warehouse manager
   /// is mapped at a district/cluster level while CDDs sit at leaf
   /// clinics/villages beneath it.
+  ///
+  /// Campaign check (runs first, mandatory): the scanned `campaignId` must
+  /// be present and equal the scanning user's selected project
+  /// `referenceID`, so a delivery team from another campaign can't be
+  /// scanned into this campaign's stock transactions. QRs without a
+  /// `campaignId` (older app builds) are rejected.
   void _registerScannerIdentityValidator() {
     final boundaryBloc = context.read<BoundaryBloc>();
+    final projectBloc = context.read<ProjectBloc>();
     ScannerComparisonRegistry().identityPayloadValidator = (payload) {
+      final scannedCampaign = payload['campaignId']?.toString() ?? '';
+      final currentCampaign =
+          projectBloc.state.selectedProject?.referenceID ?? '';
+      if (scannedCampaign.isEmpty || scannedCampaign != currentCampaign) {
+        const fallback =
+            'Scanned QR is not valid for this campaign. Rescan a user from this campaign.';
+        if (!mounted) return fallback;
+        final key = i18.common.scannedUserDifferentCampaign;
+        final translated = AppLocalizations.of(context).translate(key);
+        return translated == key ? fallback : translated;
+      }
+
       final scannedBoundary = payload['boundaryCode']?.toString();
       if (scannedBoundary == null || scannedBoundary.isEmpty) {
         // Legacy CDD build with no boundary in the QR — skip the check
@@ -1316,18 +1335,11 @@ class _AuthenticatedPageWrapperState extends State<AuthenticatedPageWrapper>
                       context.router.push(UserQRDetailsRoute());
                     },
                     child: QrImageView(
-                      // CDD identity QR carries both userId and the CDD's
-                      // leaf boundary so the warehouse manager's dispatch
-                      // scan can populate the receiver-side form. JSON keys
-                      // are deliberately named after the warehouseDetails
-                      // form field names (teamCode, administrativeArea) so
-                      // JsonSchemaScannerBuilder's spread-by-form-control
-                      // step lands them automatically — no transformer
-                      // changes and no new form fields needed.
-                      data: jsonEncode({
-                        'userId': context.loggedInUserUuid,
-                        'boundaryCode': context.boundaryOrNull?.code ?? '',
-                      }),
+                      // CDD identity QR: userId fills the delivery-team
+                      // scanner field; boundaryCode + campaignId are
+                      // checked at scan time by
+                      // _registerScannerIdentityValidator.
+                      data: context.userIdentityQrData,
                       version: QrVersions.auto,
                       size: 150.0,
                     ),
