@@ -2295,55 +2295,69 @@ class _HomePageState extends LocalizedState<HomePage> {
         child: HomeItemCard(
           icon: Icons.announcement,
           label: i18.home.fileComplaint,
-          onPressed: () async {
-            context.router.push(CurrentBoundaryRoute(
-              onBoundarySelected: (ctx) => _openModule(() async {
-                final moduleName =
-                    'hcm-complaints-${context.selectedProject.referenceID}';
-                triggerLocalization(module: moduleName);
-                isTriggerLocalisation = false;
+          onPressed: () => _openModule(() async {
+            // Boundary selection page skipped (same as inventory flows).
+            // Use the full selected boundary model so the PGR address
+            // still gets name + materializedPath (hierarchical code);
+            // fall back to the least-level boundary code otherwise.
+            final selectedBoundary = context
+                    .read<BoundaryBloc>()
+                    .state
+                    .allSelectedLastLevelBoundaries
+                    .firstOrNull ??
+                context.boundaryOrNull;
+            if (selectedBoundary != null) {
+              context.setBoundary(selectedBoundary);
+            } else {
+              FlowBuilderSingleton().setBoundary(
+                  boundary: BoundaryModel(
+                      code: LeastLevelBoundarySingleton().boundary?.first));
+            }
 
-                await FlowNavigationUtils.navigateToFlowModule(
-                  context: ctx,
-                  config: FlowModuleConfig(
-                    schemaKey: 'COMPLAINTS',
-                    sampleFlows: sampleComplaintFlows,
-                    relationshipMappings: const [
-                      RelationshipMapping(
-                          from: 'pgrComplainant',
-                          to: 'pgrService',
-                          localKey: 'complaintClientReferenceId',
-                          foreignKey: 'clientReferenceId'),
-                      RelationshipMapping(
-                          from: 'address',
-                          to: 'pgrService',
-                          localKey: 'relatedClientReferenceId',
-                          foreignKey: 'clientReferenceId'),
-                    ],
-                    nestedModelMappings: const [
-                      NestedModelMapping(
-                        rootModel: 'pgrService',
-                        fields: {
-                          'user': NestedFieldMapping(
-                            table: 'pgrComplainant',
-                            localKey: 'clientReferenceId',
-                            foreignKey: 'complaintClientReferenceId',
-                            type: NestedMappingType.one,
-                          ),
-                          'address': NestedFieldMapping(
-                            table: 'address',
-                            localKey: 'clientReferenceId',
-                            foreignKey: 'relatedClientReferenceId',
-                            type: NestedMappingType.one,
-                          )
-                        },
+            final moduleName =
+                'hcm-complaints-${context.selectedProject.referenceID}';
+            triggerLocalization(module: moduleName);
+            isTriggerLocalisation = false;
+
+            await FlowNavigationUtils.navigateToFlowModule(
+              context: context,
+              config: FlowModuleConfig(
+                schemaKey: 'COMPLAINTS',
+                sampleFlows: sampleComplaintFlows,
+                relationshipMappings: const [
+                  RelationshipMapping(
+                      from: 'pgrComplainant',
+                      to: 'pgrService',
+                      localKey: 'complaintClientReferenceId',
+                      foreignKey: 'clientReferenceId'),
+                  RelationshipMapping(
+                      from: 'address',
+                      to: 'pgrService',
+                      localKey: 'relatedClientReferenceId',
+                      foreignKey: 'clientReferenceId'),
+                ],
+                nestedModelMappings: const [
+                  NestedModelMapping(
+                    rootModel: 'pgrService',
+                    fields: {
+                      'user': NestedFieldMapping(
+                        table: 'pgrComplainant',
+                        localKey: 'clientReferenceId',
+                        foreignKey: 'complaintClientReferenceId',
+                        type: NestedMappingType.one,
                       ),
-                    ],
+                      'address': NestedFieldMapping(
+                        table: 'address',
+                        localKey: 'clientReferenceId',
+                        foreignKey: 'relatedClientReferenceId',
+                        type: NestedMappingType.one,
+                      )
+                    },
                   ),
-                );
-              }),
-            ));
-          },
+                ],
+              ),
+            );
+          }),
         ),
       ),
 
