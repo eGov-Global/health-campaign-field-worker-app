@@ -758,6 +758,12 @@ final dynamic sampleInventoryFlows = {
                   "value": true,
                   "message":
                       "APPONE_MANAGESTOCK_WAREHOUSE_label_facilityToWhich_mandatory_message"
+                },
+                {
+                  "type": "identityQr",
+                  "value": true,
+                  "message":
+                      "APPONE_MANAGESTOCK_WAREHOUSE_label_teamCode_invalid_qr_message"
                 }
               ],
               "errorMessage": "",
@@ -863,6 +869,12 @@ final dynamic sampleInventoryFlows = {
                   "value": true,
                   "message":
                       "APPONE_MANAGESTOCK_WAREHOUSE_label_facilityFromWhich_mandatory_message"
+                },
+                {
+                  "type": "identityQr",
+                  "value": true,
+                  "message":
+                      "APPONE_MANAGESTOCK_WAREHOUSE_label_teamCode_invalid_qr_message"
                 }
               ],
               "errorMessage": "",
@@ -1585,6 +1597,12 @@ final dynamic sampleInventoryFlows = {
                   "value": true,
                   "message":
                       "APPONE_MANAGESTOCK_WAREHOUSE_label_facilityToWhich_mandatory_message"
+                },
+                {
+                  "type": "identityQr",
+                  "value": true,
+                  "message":
+                      "APPONE_MANAGESTOCK_WAREHOUSE_label_teamCode_invalid_qr_message"
                 }
               ],
               "errorMessage": "",
@@ -1718,6 +1736,12 @@ final dynamic sampleInventoryFlows = {
                   "value": true,
                   "message":
                       "APPONE_MANAGESTOCK_WAREHOUSE_label_facilityFromWhich_mandatory_message"
+                },
+                {
+                  "type": "identityQr",
+                  "value": true,
+                  "message":
+                      "APPONE_MANAGESTOCK_WAREHOUSE_label_teamCode_invalid_qr_message"
                 }
               ],
               "errorMessage": "",

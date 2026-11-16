@@ -422,6 +422,9 @@ class Common {
   String get scannedUserDifferentCampaign =>
       'CORE_COMMON_SCANNED_USER_DIFFERENT_CAMPAIGN';
 
+  String get scannedQrMissingCampaignOrBoundary =>
+      'CORE_COMMON_SCANNED_QR_MISSING_CAMPAIGN_OR_BOUNDARY';
+
   String get progressIndicatorPrefixLabelHFReferral =>
       'PROGRESS_INDICATOR_PREFIX_LABEL_HFREFERRAL';
 

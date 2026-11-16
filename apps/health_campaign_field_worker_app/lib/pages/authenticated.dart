@@ -178,32 +178,34 @@ class _AuthenticatedPageWrapperState extends State<AuthenticatedPageWrapper>
   /// is mapped at a district/cluster level while CDDs sit at leaf
   /// clinics/villages beneath it.
   ///
-  /// Campaign check (runs first, mandatory): the scanned `campaignId` must
-  /// be present and equal the scanning user's selected project
-  /// `referenceID`, so a delivery team from another campaign can't be
-  /// scanned into this campaign's stock transactions. QRs without a
-  /// `campaignId` (older app builds) are rejected.
+  /// Required keys (checked first): every user QR must carry a non-empty
+  /// `campaignId` and `boundaryCode`. QRs missing either (older app
+  /// builds, or a user with no boundary selected) are rejected.
+  ///
+  /// Campaign check: the scanned `campaignId` must equal the scanning
+  /// user's selected project `referenceID`, so a delivery team from
+  /// another campaign can't be scanned into this campaign's stock
+  /// transactions.
   void _registerScannerIdentityValidator() {
     final boundaryBloc = context.read<BoundaryBloc>();
     final projectBloc = context.read<ProjectBloc>();
     ScannerComparisonRegistry().identityPayloadValidator = (payload) {
       final scannedCampaign = payload['campaignId']?.toString() ?? '';
-      final currentCampaign =
-          projectBloc.state.selectedProject?.referenceID ?? '';
-      if (scannedCampaign.isEmpty || scannedCampaign != currentCampaign) {
-        const fallback =
-            'Scanned QR is not valid for this campaign. Rescan a user from this campaign.';
-        if (!mounted) return fallback;
-        final key = i18.common.scannedUserDifferentCampaign;
-        final translated = AppLocalizations.of(context).translate(key);
-        return translated == key ? fallback : translated;
+      final scannedBoundary = payload['boundaryCode']?.toString() ?? '';
+      if (scannedCampaign.isEmpty || scannedBoundary.isEmpty) {
+        return _translateOr(
+          i18.common.scannedQrMissingCampaignOrBoundary,
+          'Scanned QR has no campaign or boundary. Ask the user to update the app and show their QR again.',
+        );
       }
 
-      final scannedBoundary = payload['boundaryCode']?.toString();
-      if (scannedBoundary == null || scannedBoundary.isEmpty) {
-        // Legacy CDD build with no boundary in the QR — skip the check
-        // rather than false-positive.
-        return null;
+      final currentCampaign =
+          projectBloc.state.selectedProject?.referenceID ?? '';
+      if (scannedCampaign != currentCampaign) {
+        return _translateOr(
+          i18.common.scannedUserDifferentCampaign,
+          'Scanned QR is not valid for this campaign. Rescan a user from this campaign.',
+        );
       }
 
       final mappedCodes = boundaryBloc.state.boundaryList
@@ -224,6 +226,14 @@ class _AuthenticatedPageWrapperState extends State<AuthenticatedPageWrapper>
 
       return 'Scanned user is not in your assigned boundary. Rescan a user in your area.';
     };
+  }
+
+  /// Localized message for [key], or [fallback] while the key has no
+  /// translation (or the wrapper is no longer mounted).
+  String _translateOr(String key, String fallback) {
+    if (!mounted) return fallback;
+    final translated = AppLocalizations.of(context).translate(key);
+    return translated == key ? fallback : translated;
   }
 
   void _handleConnectivityChange(List<ConnectivityResult> result) {

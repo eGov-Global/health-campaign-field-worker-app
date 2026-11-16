@@ -95,6 +95,42 @@ class JsonSchemaScannerBuilder extends JsonSchemaBuilder<String> {
         ?.call(payload);
   }
 
+  /// Validation rule type that restricts a scanner field to the user
+  /// identity QR (see [_tryParseIdentityPayload]), e.g. the delivery-team
+  /// `teamCode` / `deliveryTeam` fields. With it, any other scan — a
+  /// plain-text QR, several QRs, a GS1 barcode or a manually typed code —
+  /// is rejected instead of being written to the form as raw text. Whether
+  /// the identity payload itself is acceptable (required keys, campaign,
+  /// boundary) is still decided by the app via [_validateIdentityPayload].
+  static const _identityQrRuleType = 'identityQr';
+
+  ValidationRule? get _identityQrRule => validations?.firstWhereOrNull(
+      (v) => v.type == _identityQrRuleType && v.value == true);
+
+  /// Why the current scan for this field must be rejected, or null to
+  /// accept it. Shared by the listener (which shows the reason) and the
+  /// rebuild sync path (which clears silently) so both apply the same rules.
+  String? _scanRejectReason(BuildContext context, DigitScannerState state) {
+    final identityPayload = state.qrCodes.length == 1
+        ? _tryParseIdentityPayload(state.qrCodes.first)
+        : null;
+    if (identityPayload != null) {
+      return _validateIdentityPayload(identityPayload);
+    }
+
+    final rule = _identityQrRule;
+    if (rule == null || (state.qrCodes.isEmpty && state.barCodes.isEmpty)) {
+      return null;
+    }
+    const fallback =
+        'Invalid QR code. Scan the user QR code from the team member\'s app.';
+    final translated =
+        translateIfPresent(rule.message, FormLocalization.of(context));
+    return (translated == null || translated == rule.message)
+        ? fallback
+        : translated;
+  }
+
   /// Clears the scanner bloc state for this scanner so a subsequent
   /// rebuild doesn't re-apply a rejected payload, and clears the form
   /// value so any UI reading the field sees "no scan yet".
@@ -145,26 +181,25 @@ class JsonSchemaScannerBuilder extends JsonSchemaBuilder<String> {
         // Only rebuild if this scanner initiated the scan
         return current.scannerId == formControlName;
       }, listener: (context, state) {
+        final rejectReason = _scanRejectReason(context, state);
+        if (rejectReason != null) {
+          // App validator (campaign / boundary / …) or the identityQr rule
+          // said no. Reject wholesale — form value cleared, scanner state
+          // reset so a follow-up rebuild doesn't re-apply the scan,
+          // snackbar surfaces the reason.
+          _rejectScan(context, form);
+          _showRejectSnackbar(context, rejectReason);
+          return;
+        }
         if (state.qrCodes.isNotEmpty) {
-          // Join multiple QR codes with comma separator
-          final joined = state.qrCodes.join(', ');
           final identityPayload = state.qrCodes.length == 1
               ? _tryParseIdentityPayload(state.qrCodes.first)
               : null;
           if (identityPayload != null) {
-            final rejectReason = _validateIdentityPayload(identityPayload);
-            if (rejectReason != null) {
-              // App validator (boundary / project / whatever it grew to
-              // check) said no. Reject wholesale — form value cleared,
-              // scanner state reset so a follow-up rebuild doesn't
-              // re-apply the payload, snackbar surfaces the reason.
-              _rejectScan(context, form);
-              _showRejectSnackbar(context, rejectReason);
-            } else {
-              _applyIdentityPayload(form, identityPayload);
-            }
+            _applyIdentityPayload(form, identityPayload);
           } else {
-            form.control(formControlName).value = joined;
+            // Join multiple QR codes with comma separator
+            form.control(formControlName).value = state.qrCodes.join(', ');
           }
         } else if (state.barCodes.isNotEmpty) {
           // Serialize barcodes dynamically using only non-empty fields
@@ -182,7 +217,18 @@ class JsonSchemaScannerBuilder extends JsonSchemaBuilder<String> {
 
         // Sync form value with state when returning from scanner page
         // The listener may miss state changes that happen during navigation
-        if (isThisScanner && state.qrCodes.isNotEmpty) {
+        final hasScan = state.qrCodes.isNotEmpty || state.barCodes.isNotEmpty;
+        if (isThisScanner &&
+            hasScan &&
+            _scanRejectReason(context, state) != null) {
+          // Rebuild caught a rejected scan that the listener hasn't yet
+          // cleared (e.g. state restored from cold-start). Clear silently
+          // — the listener path already showed the snackbar; suppressing
+          // it here avoids double-toast on rapid rebuilds.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _rejectScan(context, form);
+          });
+        } else if (isThisScanner && state.qrCodes.isNotEmpty) {
           // Mirror the listener: if a single-QR scan parses as the CDD
           // identity payload, the canonical form value is the userId, not
           // the raw JSON — comparing against joined raw would always show
@@ -191,28 +237,17 @@ class JsonSchemaScannerBuilder extends JsonSchemaBuilder<String> {
           final identityPayload = state.qrCodes.length == 1
               ? _tryParseIdentityPayload(state.qrCodes.first)
               : null;
-          if (identityPayload != null &&
-              _validateIdentityPayload(identityPayload) != null) {
-            // Rebuild caught a rejected payload that the listener hasn't
-            // yet cleared (e.g. state restored from cold-start). Clear
-            // silently — the listener path already showed the snackbar;
-            // suppressing it here avoids double-toast on rapid rebuilds.
+          final stateValue = identityPayload != null
+              ? identityPayload['userId'] as String
+              : state.qrCodes.join(', ');
+          if (formValue != stateValue) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _rejectScan(context, form);
+              if (identityPayload != null) {
+                _applyIdentityPayload(form, identityPayload);
+              } else {
+                form.control(formControlName).value = stateValue;
+              }
             });
-          } else {
-            final stateValue = identityPayload != null
-                ? identityPayload['userId'] as String
-                : state.qrCodes.join(', ');
-            if (formValue != stateValue) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (identityPayload != null) {
-                  _applyIdentityPayload(form, identityPayload);
-                } else {
-                  form.control(formControlName).value = stateValue;
-                }
-              });
-            }
           }
         } else if (isThisScanner && state.barCodes.isNotEmpty) {
           // Sync barcodes - build expected form value and compare
@@ -449,10 +484,17 @@ class JsonSchemaScannerBuilder extends JsonSchemaBuilder<String> {
                                       formControlName, scannedValue, form.value)
                                 : null;
                             final duplicateMsg2 = dupeErrFn2?.call(formControlName);
+                            // Identity-only fields re-scan from scratch: the
+                            // form keeps just the userId, which on its own
+                            // isn't a valid identity QR and would be
+                            // rejected as soon as the scanner page restored
+                            // it as the initial value.
+                            final identityOnly = _identityQrRule != null;
                             context.router.push(DigitScannerRoute(
                               validations: _toScannerValidations(),
-                              isEditEnabled: true,
-                              initialQrCodes: displayQrCodes,
+                              isEditEnabled: !identityOnly,
+                              initialQrCodes:
+                                  identityOnly ? null : displayQrCodes,
                               scannerId: formControlName,
                               duplicateCheckFn: duplicateCheckFn2,
                               duplicateCheckMessage: duplicateMsg2,
