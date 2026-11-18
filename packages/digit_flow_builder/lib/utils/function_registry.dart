@@ -312,7 +312,13 @@ void initializeFunctionRegistry() {
           return DateTime.fromMillisecondsSinceEpoch(timestamp);
         }
 
-        // Otherwise, parse as formatted date string
+        // ISO strings (e.g. "2026-11-18" from systemDate form fields) must be
+        // tried first: the dd-MM-yyyy fallback below reads them as
+        // day 2026 / month 11 / year 18, which rolls over to "18 May 0024".
+        final isoDate = DateTime.tryParse(value);
+        if (isoDate != null) return isoDate;
+
+        // Otherwise, parse as formatted date string (dd-MM-yyyy / dd/MM/yyyy)
         return DigitDateUtils.getFormattedDateToDateTime(value);
       }
       if (value is DateTime) {

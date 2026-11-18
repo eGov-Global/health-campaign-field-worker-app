@@ -1325,6 +1325,7 @@ final jsonConfig = {
             "individualClientReferenceId":
                 "__ref:IndividualModel.clientReferenceId",
             "givenName": "closeHouseholdDetails.headName",
+            "familyName": "closeHouseholdDetails.familyname",
             "clientAuditDetails": "__generate:clientAudit",
             "auditDetails": "__generate:audit",
           },

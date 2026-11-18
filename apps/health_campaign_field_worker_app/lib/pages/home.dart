@@ -2581,6 +2581,109 @@ class _HomePageState extends LocalizedState<HomePage> {
                   config: FlowModuleConfig(
                     schemaKey: 'CLOSEHOUSEHOLD',
                     sampleFlows: sampleCloseHouseholdFlows,
+                    // closedHouseholdSummary re-runs a household SEARCH_EVENT
+                    // on init. Without these mappings the search cannot
+                    // hydrate household.address (settlement, GPS accuracy)
+                    // or reach householdMember -> individual.name (head name).
+                    relationshipMappings: [
+                      const RelationshipMapping(
+                          from: 'name',
+                          to: 'individual',
+                          localKey: 'individualClientReferenceId',
+                          foreignKey: 'clientReferenceId'),
+                      const RelationshipMapping(
+                          from: 'identifier',
+                          to: 'individual',
+                          localKey: 'individualClientReferenceId',
+                          foreignKey: 'clientReferenceId'),
+                      const RelationshipMapping(
+                          from: 'householdMember',
+                          to: 'individual',
+                          localKey: 'individualClientReferenceId',
+                          foreignKey: 'clientReferenceId'),
+                      const RelationshipMapping(
+                          from: 'address',
+                          to: 'household',
+                          localKey: 'relatedClientReferenceId',
+                          foreignKey: 'clientReferenceId'),
+                      const RelationshipMapping(
+                          from: 'householdMember',
+                          to: 'household',
+                          localKey: 'householdClientReferenceId',
+                          foreignKey: 'clientReferenceId'),
+                      const RelationshipMapping(
+                          from: 'projectBeneficiary',
+                          to: 'task',
+                          localKey: 'clientReferenceId',
+                          foreignKey: 'projectBeneficiaryClientReferenceId'),
+                      const RelationshipMapping(
+                          from: 'identifier',
+                          to: 'hFReferral',
+                          localKey: 'identifierId',
+                          foreignKey: 'beneficiaryId'),
+                      if (FlowBuilderSingleton().beneficiaryType ==
+                          BeneficiaryType.household)
+                        const RelationshipMapping(
+                          from: 'projectBeneficiary',
+                          to: 'household',
+                          localKey: 'beneficiaryClientReferenceId',
+                          foreignKey: 'clientReferenceId',
+                        )
+                      else
+                        const RelationshipMapping(
+                          from: 'projectBeneficiary',
+                          to: 'individual',
+                          localKey: 'beneficiaryClientReferenceId',
+                          foreignKey: 'clientReferenceId',
+                        ),
+                    ],
+                    nestedModelMappings: const [
+                      NestedModelMapping(
+                        rootModel: 'individual',
+                        fields: {
+                          'name': NestedFieldMapping(
+                            table: 'name',
+                            localKey: 'clientReferenceId',
+                            foreignKey: 'individualClientReferenceId',
+                            type: NestedMappingType.one,
+                          ),
+                          'address': NestedFieldMapping(
+                            table: 'address',
+                            localKey: 'clientReferenceId',
+                            foreignKey: 'relatedClientReferenceId',
+                            type: NestedMappingType.many,
+                          ),
+                          'identifiers': NestedFieldMapping(
+                            table: 'identifier',
+                            localKey: 'clientReferenceId',
+                            foreignKey: 'individualClientReferenceId',
+                            type: NestedMappingType.many,
+                          ),
+                        },
+                      ),
+                      NestedModelMapping(
+                        rootModel: 'household',
+                        fields: {
+                          'address': NestedFieldMapping(
+                            table: 'address',
+                            localKey: 'clientReferenceId',
+                            foreignKey: 'relatedClientReferenceId',
+                            type: NestedMappingType.one,
+                          ),
+                        },
+                      ),
+                      NestedModelMapping(
+                        rootModel: 'task',
+                        fields: {
+                          'resource': NestedFieldMapping(
+                            table: 'resource',
+                            localKey: 'taskclientReferenceId',
+                            foreignKey: 'clientReferenceId',
+                            type: NestedMappingType.many,
+                          ),
+                        },
+                      ),
+                    ],
                   ),
                 );
               }),
