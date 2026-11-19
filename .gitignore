@@ -21,6 +21,10 @@ migrate_working_dir/
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
 .vscode/
+!.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -55,9 +59,11 @@ pubspec_overrides.yaml
 .mason
 
 apps/health_campaign_field_worker_app/.env
+apps/health_campaign_field_worker_app/.env.*
 apps/health_campaign_field_worker_app/libisar.dylib
 *.properties
 
 # FVM Version Cache
 .fvm/
 .fvmrc
+!.fvmrc

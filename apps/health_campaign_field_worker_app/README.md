@@ -1,16 +1,26 @@
 # health_campaign_field_worker_app
 
-A new Flutter project.
+## Run by environment
 
-## Getting Started
+This app supports environment-specific runs using `--dart-define=ENV_FILE=...`.
 
-This project is a starting point for a Flutter application.
+Examples:
 
-A few resources to get you started if this is your first Flutter project:
+- Dev: `fvm flutter run --dart-define=ENV_FILE=.env.dev`
+- UAT: `fvm flutter run --dart-define=ENV_FILE=.env.uat`
+- Prod: `fvm flutter run --dart-define=ENV_FILE=.env.prod`
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+From repository root, you can also use:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- `make run-dev`
+- `make run-uat`
+- `make run-prod`
+
+## VS Code debug configurations
+
+Use `.vscode/launch.json` configurations for:
+
+- Dev Debug / UAT Debug / Prod Debug
+- Dev Release / UAT Release / Prod Release
+
+VS Code is configured to use the same FVM SDK as `make` via `.vscode/settings.json` (`.fvm/flutter_sdk`).

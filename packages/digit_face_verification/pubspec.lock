@@ -340,11 +340,10 @@ packages:
   digit_data_model:
     dependency: "direct main"
     description:
-      name: digit_data_model
-      sha256: cb4df49ed69d678fdb8387e816152613c11dc05d1827bd5d747dc6e90eba3b70
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.5.0"
+      path: "../digit_data_model"
+      relative: true
+    source: path
+    version: "1.5.1"
   digit_ui_components:
     dependency: "direct main"
     description:
