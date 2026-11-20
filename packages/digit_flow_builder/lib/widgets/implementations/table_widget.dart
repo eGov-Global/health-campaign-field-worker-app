@@ -1,15 +1,15 @@
 import 'dart:convert';
 
+import 'package:digit_ui_components/digit_components.dart';
+import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
+import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/table_cell.dart';
-import 'package:digit_ui_components/widgets/molecules/digit_table.dart';
 import 'package:flutter/material.dart';
 
 import '../../action_handler/action_config.dart';
 import '../../blocs/flow_crud_bloc.dart';
 import '../../utils/conditional_evaluator.dart';
 import '../../utils/utils.dart';
-import '../../widget_registry.dart';
-import '../localization_context.dart';
 import '../resolved_flow_widget.dart';
 
 class TableWidget extends ResolvedFlowWidget {
@@ -183,21 +183,148 @@ class TableWidget extends ResolvedFlowWidget {
       );
     }).toList();
 
-    return SizedBox(
-      height: rows.length * 52.0 + 64,
-      child: DigitTable(
-        enableBorder: true,
-        withRowDividers: false,
-        // withColumnDividers must be `true` to avoid a header-cell width
-        // miscalculation in `digit_ui_components` table_header.dart: when
-        // false, the inner container adds an extra 8 px right padding that
-        // the header Text's width does not account for, so long headers
-        // spill 8 px into the neighbouring column and read as overlap.
-        withColumnDividers: true,
-        showSelectedState: false,
-        showPagination: false,
-        columns: columns,
-        rows: rows,
+    return _CustomDataTable(
+      enableBorder: true,
+      columns: columns,
+      rows: rows,
+    );
+  }
+}
+
+class _CustomDataTable extends StatelessWidget {
+  final List<DigitTableColumn> columns;
+  final List<DigitTableRow> rows;
+  final bool enableBorder;
+
+  const _CustomDataTable({
+    required this.columns,
+    required this.rows,
+    this.enableBorder = true,
+  });
+
+  double _columnWidth(Size screenSize) {
+    if (AppView.isMobileView(screenSize)) return 140;
+    if (AppView.isTabletView(screenSize)) return 170;
+    return 202;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+    final dividerColor = theme.colorTheme.generic.divider;
+    final columnWidth = _columnWidth(MediaQuery.of(context).size);
+    final tableWidth = columnWidth * columns.length;
+    final outerBorderWidth = enableBorder ? 2.0 : 0.0;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Container(
+        width: tableWidth + outerBorderWidth,
+        decoration: BoxDecoration(
+          border: enableBorder ? Border.all(color: dividerColor) : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeaderRow(context, textTheme, dividerColor, columnWidth),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 420),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < rows.length; i++)
+                      _buildDataRow(
+                        context,
+                        textTheme,
+                        dividerColor,
+                        columnWidth,
+                        rows[i],
+                        showBottomBorder: i != rows.length - 1,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderRow(
+    BuildContext context,
+    DigitTextTheme textTheme,
+    Color dividerColor,
+    double columnWidth,
+  ) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: const DigitColors().light.genericBackground,
+        border: Border(bottom: BorderSide(color: dividerColor)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: columns
+              .map((column) => Container(
+                    width: columnWidth,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: spacer3,
+                      vertical: spacer3,
+                    ),
+                    child: Text(
+                      column.header,
+                      softWrap: true,
+                      style: textTheme.headingS.copyWith(
+                        color: theme.colorTheme.primary.primary2,
+                      ),
+                    ),
+                  ))
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDataRow(
+    BuildContext context,
+    DigitTextTheme textTheme,
+    Color dividerColor,
+    double columnWidth,
+    DigitTableRow row, {
+    required bool showBottomBorder,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorTheme.paper.primary,
+        border: showBottomBorder
+            ? Border(bottom: BorderSide(color: dividerColor))
+            : null,
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < columns.length; i++)
+              Container(
+                width: columnWidth,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: spacer3,
+                  vertical: spacer3,
+                ),
+                child: Text(
+                  i < row.tableRow.length ? row.tableRow[i].label : '',
+                  softWrap: true,
+                  style: textTheme.bodyS.copyWith(
+                    color: theme.colorTheme.text.primary,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

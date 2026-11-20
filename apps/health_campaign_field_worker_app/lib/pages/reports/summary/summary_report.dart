@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:digit_data_model/data/repositories/package_repository/local/household.dart';
 import 'package:digit_data_model/data/repositories/package_repository/local/household_member.dart';
 import 'package:digit_data_model/data_model.dart';
@@ -533,6 +535,8 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
       return DigitTableRow(tableRow: cells);
     }).toList();
 
+    final expectedTableHeight = rows.length * 52.0 + 64.0;
+
     return Scaffold(
       body: ScrollableContent(
         enableFixedDigitButton: true,
@@ -600,15 +604,35 @@ class _SummaryReportPageState extends LocalizedState<SummaryReportPage> {
               ),
             )
           else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: spacer2),
-              child: DigitTable(
-                enableBorder: true,
-                showPagination: false,
-                showSelectedState: false,
-                columns: columns,
-                rows: rows,
-                tableHeight: 1000,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: spacer2),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final hasBoundedHeight = constraints.hasBoundedHeight &&
+                        constraints.maxHeight.isFinite;
+                    final availableHeight = hasBoundedHeight
+                        ? constraints.maxHeight
+                        : MediaQuery.of(context).size.height * 0.45;
+                    final tableHeight =
+                        min(expectedTableHeight, availableHeight);
+                    final tableScrollPhysics = expectedTableHeight > tableHeight
+                        ? const ClampingScrollPhysics()
+                        : const NeverScrollableScrollPhysics();
+
+                    return DigitTable(
+                      scrollPhysicsForPagination: tableScrollPhysics,
+                      enableBorder: true,
+                      withRowDividers: false,
+                      withColumnDividers: true,
+                      showPagination: false,
+                      showSelectedState: false,
+                      columns: columns,
+                      rows: rows,
+                      tableHeight: tableHeight,
+                    );
+                  },
+                ),
               ),
             ),
           const SizedBox(height: spacer2),
