@@ -1851,7 +1851,7 @@ final dynamic sampleBednetFlows = {
             {
               "type": "string",
               "enums": [
-                {"code": "DEFAULT", "name": "DEFAULT"},
+                {"code": "DEFAULT", "name": "WITHOUT_PIECE"},
                 {
                   "code": "217f2f61-559d-4c95-a691-97fae47b836a",
                   "name":
@@ -1890,7 +1890,7 @@ final dynamic sampleBednetFlows = {
               "errorMessage": "REGISTRATION_ADD_MEMBER_identifiers_ERROR",
               "isMultiSelect": false,
               "dropDownOptions": [
-                {"code": "DEFAULT", "name": "DEFAULT"},
+                {"code": "DEFAULT", "name": "WITHOUT_PIECE"},
                 {
                   "code": "217f2f61-559d-4c95-a691-97fae47b836a",
                   "name":
@@ -3870,7 +3870,7 @@ final dynamic sampleBednetFlows = {
             {
               "type": "string",
               "enums": [
-                {"code": "DEFAULT", "name": "DEFAULT"},
+                {"code": "DEFAULT", "name": "WITHOUT_PIECE"},
                 {
                   "code": "2bfe903a-1601-483e-b46a-d8f644abd7c8",
                   "name":
@@ -3910,7 +3910,7 @@ final dynamic sampleBednetFlows = {
               "includeInForm": true,
               "isMultiSelect": false,
               "dropDownOptions": [
-                {"code": "DEFAULT", "name": "DEFAULT"},
+                {"code": "DEFAULT", "name": "WITHOUT_PIECE"},
                 {
                   "code": "2bfe903a-1601-483e-b46a-d8f644abd7c8",
                   "name":
