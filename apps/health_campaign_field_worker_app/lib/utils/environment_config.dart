@@ -21,13 +21,16 @@ class EnvironmentConfiguration {
 
   FutureOr<void> initialize() async {
     _dotEnv = DotEnv();
+    const envFileName =
+        String.fromEnvironment('ENV_FILE', defaultValue: '.env');
     try {
-      await _dotEnv.load();
+      await _dotEnv.load(fileName: envFileName);
       _variables = Variables(dotEnv: _dotEnv);
     } catch (error) {
       AppLogger.instance.error(
         title: runtimeType.toString(),
-        message: 'Error while accessing .env file. Using fallback values',
+        message:
+            'Error while accessing env file "$envFileName". Using fallback values',
       );
 
       _variables = Variables(useFallbackValues: true, dotEnv: _dotEnv);

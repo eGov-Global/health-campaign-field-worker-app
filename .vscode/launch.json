@@ -1,0 +1,56 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "eGov-Gabon (Dev Debug)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "${workspaceFolder}/apps/health_campaign_field_worker_app",
+      "program": "${workspaceFolder}/apps/health_campaign_field_worker_app/lib/main.dart",
+      "toolArgs": ["--dart-define=ENV_FILE=.env.dev"]
+    },
+    {
+      "name": "eGov-Gabon (UAT Debug)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "${workspaceFolder}/apps/health_campaign_field_worker_app",
+      "program": "${workspaceFolder}/apps/health_campaign_field_worker_app/lib/main.dart",
+      "toolArgs": ["--dart-define=ENV_FILE=.env.uat"]
+    },
+    {
+      "name": "eGov-Gabon (Prod Debug)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "${workspaceFolder}/apps/health_campaign_field_worker_app",
+      "program": "${workspaceFolder}/apps/health_campaign_field_worker_app/lib/main.dart",
+      "toolArgs": ["--dart-define=ENV_FILE=.env.prod"]
+    },
+    {
+      "name": "eGov-Gabon (Dev Release)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "${workspaceFolder}/apps/health_campaign_field_worker_app",
+      "program": "${workspaceFolder}/apps/health_campaign_field_worker_app/lib/main.dart",
+      "flutterMode": "release",
+      "toolArgs": ["--dart-define=ENV_FILE=.env.dev"]
+    },
+    {
+      "name": "eGov-Gabon (UAT Release)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "${workspaceFolder}/apps/health_campaign_field_worker_app",
+      "program": "${workspaceFolder}/apps/health_campaign_field_worker_app/lib/main.dart",
+      "flutterMode": "release",
+      "toolArgs": ["--dart-define=ENV_FILE=.env.uat"]
+    },
+    {
+      "name": "eGov-Gabon (Prod Release)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "${workspaceFolder}/apps/health_campaign_field_worker_app",
+      "program": "${workspaceFolder}/apps/health_campaign_field_worker_app/lib/main.dart",
+      "flutterMode": "release",
+      "toolArgs": ["--dart-define=ENV_FILE=.env.prod"]
+    }
+  ]
+}
