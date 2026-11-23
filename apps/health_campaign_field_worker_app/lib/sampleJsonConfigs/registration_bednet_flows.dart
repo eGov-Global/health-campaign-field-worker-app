@@ -1853,10 +1853,6 @@ final dynamic sampleBednetFlows = {
               "enums": [
                 {"code": "DEFAULT", "name": "DEFAULT"},
                 {
-                  "code": "UNIQUE_BENEFICIARY_ID",
-                  "name": "UNIQUE_BENEFICIARY_ID"
-                },
-                {
                   "code": "217f2f61-559d-4c95-a691-97fae47b836a",
                   "name":
                       "OPTION_217f2f61-559d-4c95-a691-97fae47b836a_1793378815773"
@@ -1883,29 +1879,18 @@ final dynamic sampleBednetFlows = {
               "helpText": "",
               "infoText": "",
               "readOnly": false,
-              "required": true,
+              "required": false,
               "fieldName": "identifiers",
-              "mandatory": true,
+              "mandatory": false,
               "deleteFlag": false,
               "innerLabel": "",
               "schemaCode": null,
               "systemDate": false,
-              "validations": [
-                {
-                  "type": "required",
-                  "value": true,
-                  "message":
-                      "APPONE_REGISTRATION_BENEFICIARYDETAILS_label_idpopulator_mandatory_message_addmember"
-                }
-              ],
+              "validations": [],
               "errorMessage": "REGISTRATION_ADD_MEMBER_identifiers_ERROR",
               "isMultiSelect": false,
               "dropDownOptions": [
                 {"code": "DEFAULT", "name": "DEFAULT"},
-                {
-                  "code": "UNIQUE_BENEFICIARY_ID",
-                  "name": "UNIQUE_BENEFICIARY_ID"
-                },
                 {
                   "code": "217f2f61-559d-4c95-a691-97fae47b836a",
                   "name":
@@ -3887,10 +3872,6 @@ final dynamic sampleBednetFlows = {
               "enums": [
                 {"code": "DEFAULT", "name": "DEFAULT"},
                 {
-                  "code": "UNIQUE_BENEFICIARY_ID",
-                  "name": "UNIQUE_BENEFICIARY_ID"
-                },
-                {
                   "code": "2bfe903a-1601-483e-b46a-d8f644abd7c8",
                   "name":
                       "OPTION_2bfe903a-1601-483e-b46a-d8f644abd7c8_1793358024169"
@@ -3917,29 +3898,19 @@ final dynamic sampleBednetFlows = {
               "helpText": "",
               "infoText": "",
               "readOnly": false,
-              "required": true,
+              "required": false,
               "fieldName": "identifiers",
               "mandatory": false,
               "deleteFlag": false,
               "innerLabel": "",
               "schemaCode": null,
               "systemDate": false,
-              "validations": [
-                {
-                  "type": "required",
-                  "value": true,
-                  "message": "FIELD_REQUIRED_MESSAGE_1793358101790"
-                }
-              ],
+              "validations": [],
               "errorMessage": "",
               "includeInForm": true,
               "isMultiSelect": false,
               "dropDownOptions": [
                 {"code": "DEFAULT", "name": "DEFAULT"},
-                {
-                  "code": "UNIQUE_BENEFICIARY_ID",
-                  "name": "UNIQUE_BENEFICIARY_ID"
-                },
                 {
                   "code": "2bfe903a-1601-483e-b46a-d8f644abd7c8",
                   "name":

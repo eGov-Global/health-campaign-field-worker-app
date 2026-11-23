@@ -27,6 +27,8 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
     const idKey = 'idNumber';
     const idTypeKey = 'idType';
     const idAutoFilledKey = 'idAutoFilled';
+    const beneficiaryIdType = 'UNIQUE_BENEFICIARY_ID';
+    const defaultIdType = 'DEFAULT';
 
     final loc = FormLocalization.of(context);
     final validationMessages = buildValidationMessages(validations, loc);
@@ -37,7 +39,7 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
     /// Register controls
     if (!form.contains(idKey)) {
       form.addAll({
-        idKey: FormControl<String>(validators: [Validators.required]),
+        idKey: FormControl<String>(),
       });
     }
 
@@ -93,8 +95,32 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
         ? defaultValue
         : (navParamValue ?? defaultValue as String?);
 
+    String? resolveDefaultBeneficiaryId() {
+      final navigationParams = context.read<Map<String, dynamic>?>();
+      final navBeneficiaryId = navigationParams?[beneficiaryIdType];
+      if (navBeneficiaryId is String && navBeneficiaryId.isNotEmpty) {
+        return navBeneficiaryId;
+      }
+
+      final availableBeneficiaryId = identifiers?[beneficiaryIdType];
+      if (availableBeneficiaryId is String && availableBeneficiaryId.isNotEmpty) {
+        return availableBeneficiaryId;
+      }
+
+      return null;
+    }
+
+    void applyDefaultBeneficiarySelection() {
+      final beneficiaryId = resolveDefaultBeneficiaryId();
+      form.control(idTypeKey).value = defaultIdType;
+      form.control(idAutoFilledKey).value = beneficiaryId != null;
+      form.control(idKey).value = beneficiaryId;
+      form.control(formControlName).value = beneficiaryId == null
+          ? null
+          : '$beneficiaryIdType, $beneficiaryId';
+    }
+
     if (valueToUse != null &&
-        valueToUse is String &&
         form.control(idTypeKey).value == null &&
         form.control(idKey).value == null) {
       final parts = valueToUse.split(',');
@@ -102,12 +128,14 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
         final type = parts[0].trim();
         final number = parts.sublist(1).join(',').trim();
 
-        form.control(idTypeKey).value = type;
-        if (type != 'DEFAULT') {
+        if (type == beneficiaryIdType || type == defaultIdType) {
+          applyDefaultBeneficiarySelection();
+        } else {
+          form.control(idTypeKey).value = type;
           form.control(idKey).value = number;
           form.control(idAutoFilledKey).value = true;
+          form.control(formControlName).value = '$type, $number';
         }
-        form.control(formControlName).value = valueToUse;
       }
     }
 
@@ -119,14 +147,23 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
         final type = parts[0];
         final number = parts.sublist(1).join(' ');
 
-        if (form.control(idTypeKey).value == null) {
+        if (form.control(idTypeKey).value == null && type != beneficiaryIdType) {
           form.control(idTypeKey).value = type;
         }
-        if (form.control(idKey).value == null && type != 'DEFAULT') {
+        if (form.control(idKey).value == null &&
+            type != defaultIdType &&
+            type != beneficiaryIdType) {
           form.control(idKey).value = number;
           form.control(idAutoFilledKey).value = true;
         }
       }
+    }
+
+    final currentCombinedValue = form.control(formControlName).value;
+    final hasCombinedValue = currentCombinedValue is String &&
+        currentCombinedValue.trim().isNotEmpty;
+    if (form.control(idTypeKey).value == null && !hasCombinedValue) {
+      applyDefaultBeneficiarySelection();
     }
 
     /// Helper to update combined value
@@ -145,6 +182,8 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
 
     final isIdTypeMissing =
         (form.control(idTypeKey).value?.toString().trim().isEmpty ?? true);
+    final filteredIdTypeOptions =
+        (enums ?? []).where((e) => e.code != beneficiaryIdType).toList();
 
     final isIdNumberMissing =
         (form.control(idKey).value?.toString().trim().isEmpty ?? true);
@@ -168,7 +207,7 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
                   ? DropdownItem(
                       code: form.control(idTypeKey).value!,
                       name: loc.translate(
-                        (enums ?? [])
+                        filteredIdTypeOptions
                             .firstWhere(
                               (e) => e.code == form.control(idTypeKey).value,
                               orElse: () => Option(
@@ -180,7 +219,7 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
                       ),
                     )
                   : null,
-              items: (enums ?? [])
+              items: filteredIdTypeOptions
                   .map(
                     (e) => DropdownItem(
                       code: e.code,
@@ -198,6 +237,11 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
                 //   2. An availableIDs / navigationParams entry for this
                 //      type (e.g. a freshly-allocated pool ID).
                 //   3. Blank the number field.
+                if (value.code == defaultIdType) {
+                  applyDefaultBeneficiarySelection();
+                  return;
+                }
+
                 String? restoredNumber;
                 if (originalEditIdType == value.code &&
                     originalEditIdNumber != null) {
@@ -228,10 +272,7 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
               },
               onChange: (value) {
                 if (value.isEmpty) {
-                  form.control(idTypeKey).value = null;
-                  form.control(idKey).value = null;
-                  form.control(idAutoFilledKey).value = false;
-                  form.control(formControlName).value = null;
+                  applyDefaultBeneficiarySelection();
                 }
               },
             ),
