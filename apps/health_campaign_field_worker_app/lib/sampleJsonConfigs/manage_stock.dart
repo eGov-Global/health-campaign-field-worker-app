@@ -45,6 +45,7 @@ final dynamic sampleInventoryFlows = {
       "header": [],
       "navigateTo": null,
       "screenType": "TEMPLATE",
+      "showLocationTag": false,
       "initActions": [],
       "submitCondition": null,
       "preventScreenCapture": false
@@ -279,6 +280,7 @@ final dynamic sampleInventoryFlows = {
       "heading": "INVENTORY_INCOMING_TRANSACTIONS_HEADING",
       "navigateTo": null,
       "screenType": "TEMPLATE",
+      "showLocationTag": false,
       "description": "INVENTORY_INCOMING_TRANSACTIONS_DESCRIPTION",
       "initActions": [
         {
@@ -415,6 +417,7 @@ final dynamic sampleInventoryFlows = {
       "heading": "INVENTORY_STOCK_RECEIPT_DETAILS_HEADING",
       "navigateTo": null,
       "screenType": "TEMPLATE",
+      "showLocationTag": false,
       "initActions": [
         {
           "actionType": "SEARCH_EVENT",
@@ -603,6 +606,7 @@ final dynamic sampleInventoryFlows = {
       "heading": "INVENTORY_VIEW_TRANSACTION_HEADING",
       "navigateTo": null,
       "screenType": "TEMPLATE",
+      "showLocationTag": false,
       "description": "INVENTORY_VIEW_TRANSACTION_DESCRIPTION",
       "initActions": [
         {
@@ -702,6 +706,7 @@ final dynamic sampleInventoryFlows = {
       "header": [],
       "navigateTo": null,
       "screenType": "TEMPLATE",
+      "showLocationTag": false,
       "submitCondition": null,
       "preventScreenCapture": false
     },
@@ -891,6 +896,7 @@ final dynamic sampleInventoryFlows = {
       "heading": "INVENTORY_SCAN_CONFIRM_HEADING",
       "navigateTo": null,
       "screenType": "TEMPLATE",
+      "showLocationTag": false,
       "description": "INVENTORY_SCAN_CONFIRM_DESCRIPTION",
       "initActions": [
         {
@@ -1068,6 +1074,7 @@ final dynamic sampleInventoryFlows = {
       "heading": "APP_CONFIG_INVENTORY_returnOrIssueSelection_HEADING",
       "navigateTo": null,
       "screenType": "TEMPLATE",
+      "showLocationTag": false,
       "initActions": [
         {
           "actionType": "SEARCH_EVENT",
@@ -1260,6 +1267,7 @@ final dynamic sampleInventoryFlows = {
       "heading": "APP_CONFIG_INVENTORY_manageStock_HEADING",
       "navigateTo": null,
       "screenType": "TEMPLATE",
+      "showLocationTag": false,
       "initActions": [
         {
           "actionType": "SEARCH_EVENT",
