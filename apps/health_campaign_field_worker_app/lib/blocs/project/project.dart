@@ -1264,15 +1264,6 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         return facilityLevel == null || facilityLevel == 'current';
       }).toList();
 
-      final projectResources = await projectResourceLocalRepository.search(
-        ProjectResourceSearchModel(projectId: [project.id]),
-      );
-      final productVariantIds = projectResources
-          .map((pr) => pr.resource.productVariantId)
-          .whereType<String>()
-          .toSet()
-          .toList();
-
       List<String> receiverIds = [];
       if (userRoles.contains(RolesType.healthFacilitySupervisor.toValue())) {
         receiverIds = currentFacilities.map((e) => e.facilityId).toList();
@@ -1350,17 +1341,11 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         syncedCount += stockEntries.length;
       }
 
+      // Pull the STOCK_BALANCE user actions (UserAction count). The
+      // StockModel count is derived from the rows just stored, so rejections
+      // and other stock movements need no balance fix-up here.
       await downSyncStockBalances(project.id,
           projectReferenceID: project.referenceID);
-
-      // TODO: COMMENTING USER CREATION ON DOWNSYNC
-      // await _createStockBalanceUserActions(
-      //   project: project,
-      //   receiverIds: receiverIds,
-      //   productVariantIds: productVariantIds,
-      //   userRoles: userRoles,
-      //   userObject: userObject,
-      // );
 
       debugPrint(
           'SILENT_STOCK_DOWNSYNC: Completed. Synced $syncedCount/$totalCount');
@@ -1418,14 +1403,13 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
           facilityIds.first.isEmpty) return;
 
       // Build balance keys for all facility × product variant combinations.
-      // Includes the active compact shape, the intermediate readable shape
-      // (pre-compaction, post-suffix), and the legacy shape (pre-suffix) so
-      // server rows written by any prior version are not missed during
-      // downsync.
+      // Only the active key shape is fetched: the UserAction count is only
+      // ever written under it, and rows under older key shapes carry just
+      // the retired running `balance`.
       // projectReferenceID is passed explicitly: this code path runs during
       // project bloc startup, before FlowBuilderSingleton().selectedProject
       // is populated, so the singleton fallback would yield an empty suffix
-      // and silently degrade the new-shape key to the legacy shape.
+      // and silently degrade the key to the pre-suffix shape.
       final balanceKeys = <String>{};
       for (final facilityId in facilityIds) {
         for (final productVariantId in productVariantIds) {
@@ -1434,12 +1418,6 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
             productVariantId,
             projectReferenceID: projectReferenceID,
           ));
-          balanceKeys.add(readableBalanceKey(
-            facilityId,
-            productVariantId,
-            projectReferenceID: projectReferenceID,
-          ));
-          balanceKeys.add(legacyBalanceKey(facilityId, productVariantId));
         }
       }
 
@@ -1500,160 +1478,6 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       }
     } catch (e) {
       debugPrint('Stock balance downsync error: $e');
-    }
-  }
-
-  /// Creates or updates UserAction balance records after stock downsync.
-  /// This ensures that balance records exist for all facility × product variant combinations
-  /// based on the locally available stock data.
-  Future<void> _createStockBalanceUserActions({
-    required ProjectModel project,
-    required List<String> receiverIds,
-    required List<String> productVariantIds,
-    required Iterable<String> userRoles,
-    required UserRequestModel? userObject,
-  }) async {
-    try {
-      final isDistributor =
-          userRoles.contains(RolesType.distributor.toValue()) ||
-              userRoles.contains(RolesType.communityDistributor.toValue());
-
-      final projectFacilities = await projectFacilityLocalRepository.search(
-        ProjectFacilitySearchModel(projectId: [project.id]),
-      );
-
-      final currentFacilities = projectFacilities.where((pf) {
-        final facilityLevel = pf.additionalFields?.fields
-            .where((f) => f.key == 'facilityLevel')
-            .firstOrNull
-            ?.value;
-        return facilityLevel == null || facilityLevel == 'current';
-      }).toList();
-
-      List<String> facilityIds;
-      if (isDistributor) {
-        facilityIds = [userObject?.uuid ?? ''];
-      } else {
-        facilityIds = currentFacilities
-            .map((e) => e.facilityId)
-            .whereType<String>()
-            .toSet()
-            .toList();
-      }
-
-      if (facilityIds.isEmpty || facilityIds.first.isEmpty) return;
-      if (productVariantIds.isEmpty) return;
-
-      // Calculate balance for each facility × product variant combination
-      for (final facilityId in facilityIds) {
-        for (final productVariantId in productVariantIds) {
-          // Get all stocks for this facility and product, scoped to the
-          // current project via `referenceId`. Without this scope a facility
-          // (or distributor userUuid) used across multiple projects has all
-          // its stocks summed into every project's STOCK_BALANCE UserAction,
-          // so accepting stock in one project inflates the balance shown in
-          // the other. See stock_balance_card.dart's identical scope.
-          final receivedStocks = await stockLocalRepository.search(
-            StockSearchModel(
-              receiverId: facilityId,
-              referenceId: project.id,
-            ),
-          );
-          final sentStocks = await stockLocalRepository.search(
-            StockSearchModel(
-              senderId: facilityId,
-              referenceId: project.id,
-            ),
-          );
-
-          final allStocksMap = <String, StockModel>{};
-          for (final stock in receivedStocks) {
-            if (stock.productVariantId == productVariantId) {
-              allStocksMap[stock.clientReferenceId] = stock;
-            }
-          }
-          for (final stock in sentStocks) {
-            if (stock.productVariantId == productVariantId) {
-              allStocksMap[stock.clientReferenceId] = stock;
-            }
-          }
-          final allStocks = allStocksMap.values.toList();
-
-          // Calculate the balance
-          final metrics = StockCalculationUtils.calculateStockMetrics(
-            stockList: allStocks,
-            facilityId: facilityId,
-            productId: productVariantId,
-            isDistributor: isDistributor,
-          );
-
-          final balance = metrics['stockInHand'] ?? 0.0;
-          final balanceKey = generateBalanceKey(facilityId, productVariantId);
-
-          // Check if UserAction already exists
-          final existingActions = await userActionLocalRepository.search(
-            UserActionSearchModel(clientReferenceId: [balanceKey]),
-          );
-
-          final now = DateTime.now().millisecondsSinceEpoch;
-          final loggedInUserUuid = userObject?.uuid ?? '';
-
-          final balanceAction = UserActionModel(
-            clientReferenceId: balanceKey,
-            action: 'STOCK_BALANCE',
-            projectId: project.id,
-            boundaryCode: project.address?.boundary ?? "",
-            latitude: 0.0,
-            longitude: 0.0,
-            locationAccuracy: 0.0,
-            isSync: false,
-            timestamp: now,
-            id: existingActions.isNotEmpty ? existingActions.first.id : null,
-            rowVersion: existingActions.isNotEmpty
-                ? existingActions.first.rowVersion
-                : null,
-            tenantId: userObject?.tenantId ?? '',
-            nonRecoverableError: false,
-            additionalFields: UserActionAdditionalFields(
-              version: 1,
-              fields: [
-                AdditionalField('balance', balance.toString()),
-                AdditionalField('facilityId', facilityId),
-                AdditionalField('productVariantId', productVariantId),
-              ],
-            ),
-            auditDetails: existingActions.isNotEmpty
-                ? existingActions.first.auditDetails
-                : AuditDetails(createdBy: loggedInUserUuid, createdTime: now),
-            clientAuditDetails: existingActions.isNotEmpty
-                ? existingActions.first.clientAuditDetails
-                : ClientAuditDetails(
-                    createdBy: loggedInUserUuid,
-                    createdTime: now,
-                    lastModifiedBy: loggedInUserUuid,
-                    lastModifiedTime: now,
-                  ),
-          );
-
-          /// INFO: need to revisit as user action is getting create and update to server also
-          if (existingActions.isNotEmpty) {
-            await userActionLocalRepository.update(
-              balanceAction,
-              createOpLog: true,
-            );
-          } else {
-            await userActionLocalRepository.create(
-              balanceAction,
-              createOpLog: true,
-            );
-          }
-
-          debugPrint(
-              'STOCK_BALANCE_INIT: Created/updated balance for $facilityId/$productVariantId = $balance');
-        }
-      }
-    } catch (e) {
-      debugPrint('STOCK_BALANCE_INIT: Error - $e');
     }
   }
 

@@ -50,27 +50,19 @@ String _compactFacilityToken(String facilityId) {
   return '${hex.substring(0, 4)}${hex.substring(hex.length - 12)}';
 }
 
-/// Generates a balance key for UserAction STOCK_BALANCE records.
+/// Generates the clientReferenceId of a STOCK_BALANCE UserAction, which holds
+/// the UserAction count of a facility (or distributor) × product variant —
+/// see `stock_user_action_count.dart`.
 ///
-/// Active shape (current): `bal_{compactFacility}{productVariantId}_{campaignSuffix}`
-/// where `compactFacility` is [_compactFacilityToken] applied to [facilityId].
-///
-/// Intermediate shape (post-suffix, pre-compaction):
-/// `bal_{facilityId}{productVariantId}_{campaignSuffix}` — produced by
-/// [readableBalanceKey], retained for migration of devices that wrote balances
-/// after the campaign-suffix change but before the compaction change.
-///
-/// Legacy shape (pre-suffix): `bal_{facilityId}{productVariantId}` — produced
-/// by [legacyBalanceKey].
+/// Shape: `bal_{compactFacility}{productVariantId}_{campaignSuffix}` where
+/// `compactFacility` is [_compactFacilityToken] applied to [facilityId].
+/// Rows under older key shapes (no campaign suffix, or an uncompacted UUID
+/// facility) hold only the retired running `balance` and are not read.
 ///
 /// Pass [projectReferenceID] when calling outside an action-handler context —
 /// e.g. during downsync — where `FlowBuilderSingleton().selectedProject`
 /// may not yet be populated. When omitted, the active singleton project is
 /// used (sufficient inside post-login executors).
-///
-/// Migration: writers should use this active shape; readers that need to find
-/// older local rows should also try [readableBalanceKey] and [legacyBalanceKey]
-/// in that order before treating a balance as missing.
 String generateBalanceKey(
   String facilityId,
   String productVariantId, {
@@ -82,27 +74,6 @@ String generateBalanceKey(
   final base = 'bal_${_compactFacilityToken(facilityId)}$productVariantId';
   return suffix.isEmpty ? base : '${base}_$suffix';
 }
-
-/// Intermediate shape that includes the campaign suffix but keeps the full
-/// (uncompacted) facilityId. Used to migrate devices that wrote balances
-/// after commit 751bec251 but before facility compaction landed.
-String readableBalanceKey(
-  String facilityId,
-  String productVariantId, {
-  String? projectReferenceID,
-}) {
-  final suffix = projectReferenceID != null
-      ? _campaignSuffixFromReferenceID(projectReferenceID)
-      : _activeCampaignSuffix();
-  final base = 'bal_$facilityId$productVariantId';
-  return suffix.isEmpty ? base : '${base}_$suffix';
-}
-
-/// Pre-campaign-suffix shape of the balance key. Retained for the
-/// copy-on-first-touch migration in stock balance writers and dual-key
-/// search in batch readers.
-String legacyBalanceKey(String facilityId, String productVariantId) =>
-    'bal_$facilityId$productVariantId';
 
 class StockCalculationUtils {
   /// ClientReferenceIds of inbound DISPATCHED rows considered "claimed" by a
@@ -208,6 +179,11 @@ class StockCalculationUtils {
     return _getAdditionalFieldValue(stock, 'stockEntryType');
   }
 
+  /// Stock metrics for [facilityId] × [productId] derived from StockModel
+  /// rows. `stockInHand` is the StockModel count: every stock transaction
+  /// (receipt, issue, return, loss, damage; rejected dispatches excluded).
+  /// The stock balance is this plus the UserAction count — see
+  /// `addUserActionCounts` in `stock_user_action_count.dart`.
   static Map<String, double> calculateStockMetrics({
     required List<StockModel> stockList,
     required String facilityId,
@@ -362,6 +338,9 @@ class StockCalculationUtils {
         stockReceived(quantity);
       }
     } else if (transactionType == 'DISPATCHED') {
+      // A rejected dispatch (e.g. a return the warehouse refused) never
+      // moved stock in either direction.
+      if (status == 'REJECTED') return;
       if (stockEntryType == 'RETURNED') {
         stockReturned(quantity);
       } else if (status == 'ACCEPTED' && !alreadyClaimedByReceived) {

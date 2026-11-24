@@ -1,9 +1,7 @@
 import 'dart:math';
 
-import 'package:collection/collection.dart';
 import 'package:digit_crud_bloc/digit_crud_bloc.dart';
 import 'package:digit_data_model/data_model.dart';
-import 'package:digit_data_model/models/entities/user_action.dart';
 import 'package:digit_flow_builder/flow_builder.dart';
 import 'package:digit_flow_builder/utils/function_registry.dart';
 import 'package:digit_flow_builder/utils/interpolation.dart';
@@ -19,6 +17,7 @@ import 'package:transit_post/data/repositories/local/user_action.dart';
 import '../../data/services/server_summary_report_service.dart';
 import '../../models/entities/roles_type.dart';
 import '../../utils/stock_calculation_utils.dart';
+import '../../utils/stock_user_action_count.dart';
 import '../../utils/utils.dart';
 import '../localized.dart';
 
@@ -166,6 +165,7 @@ class _ProductSelectionCardState extends LocalizedState<ProductSelectionCard> {
 
     final tenantId = FlowBuilderSingleton().selectedProject?.tenantId;
     final projectId = FlowBuilderSingleton().selectedProject?.id;
+    final userActionRepo = context.read<UserActionLocalRepository>();
     if (tenantId == null) {
       debugPrint('ProductSelectionCard: ERROR - TenantId not found');
       return;
@@ -223,7 +223,7 @@ class _ProductSelectionCardState extends LocalizedState<ProductSelectionCard> {
       final productIds = _selectedProducts.map((p) => p.id).toList();
       final isDistributor = _isDistributorForStock(context);
 
-      final computedBalances =
+      final stockModelCounts =
           StockCalculationUtils.calculateStockInHandForProducts(
         stockList: stockList,
         facilityId: facilityId,
@@ -232,22 +232,25 @@ class _ProductSelectionCardState extends LocalizedState<ProductSelectionCard> {
         isDistributor: isDistributor,
       );
 
-      // Merge UserAction STOCK_BALANCE records — these carry the authoritative
-      // post-delivery balance written by StockBalanceExecutor / UPDATE_STOCK_BALANCE
-      // and are what StockBalanceCard displays. Without this merge the max-
-      // quantity validation on the next page collapses to 0 while home shows
-      // a non-zero balance.
-      final userActionBalances =
-          await _loadUserActionBalancesFor(facilityId, productIds);
+      var userActionCounts = <String, double>{};
+      try {
+        userActionCounts = await loadUserActionCounts(
+          repository: userActionRepo,
+          facilityId: facilityId,
+          productIds: productIds,
+        );
+      } catch (e) {
+        debugPrint('ProductSelectionCard: Error loading UserAction counts: $e');
+      }
 
-      _stockInHandMap = <String, double>{
-        ...computedBalances,
-        ...userActionBalances,
-      };
+      // Stock Balance = StockModel count + UserAction count — the same
+      // calculation StockBalanceCard shows on home, so the max-quantity
+      // validation on the next page matches it.
+      _stockInHandMap = addUserActionCounts(stockModelCounts, userActionCounts);
 
       debugPrint(
           'ProductSelectionCard: Calculated stockInHand: $_stockInHandMap '
-          '(userActionMerged=${userActionBalances.length}, isDistributor=$isDistributor)');
+          '(userActionCounts=$userActionCounts, isDistributor=$isDistributor)');
 
       // Update FormsBloc with stock in hand data
       _updateStockInHandInFormsBloc();
@@ -259,49 +262,6 @@ class _ProductSelectionCardState extends LocalizedState<ProductSelectionCard> {
       debugPrint('ProductSelectionCard: ERROR in stock search: $e');
       debugPrint('Stack trace: $stackTrace');
     }
-  }
-
-  /// Loads UserAction STOCK_BALANCE records for the given facility+products
-  /// and returns a `{productVariantId: balance}` map. Mirrors
-  /// [_StockBalanceCardState._loadUserActionBalances] so the max-quantity
-  /// validation on the next page matches what the home stock card shows.
-  Future<Map<String, double>> _loadUserActionBalancesFor(
-    String facilityId,
-    List<String> productIds,
-  ) async {
-    final balances = <String, double>{};
-    if (facilityId.isEmpty || productIds.isEmpty) return balances;
-
-    try {
-      final userActionRepo = context.read<UserActionLocalRepository>();
-      final balanceKeys =
-          productIds.map((id) => generateBalanceKey(facilityId, id)).toList();
-
-      final actions = await userActionRepo.search(
-        UserActionSearchModel(clientReferenceId: balanceKeys),
-      );
-
-      for (final action in actions) {
-        final fields = action.additionalFields?.fields;
-        if (fields == null) continue;
-
-        final productVariantId =
-            fields.firstWhereOrNull((f) => f.key == 'productVariantId')?.value;
-        final balanceStr =
-            fields.firstWhereOrNull((f) => f.key == 'balance')?.value;
-
-        if (productVariantId != null && balanceStr != null) {
-          final balance = double.tryParse(balanceStr.toString());
-          if (balance != null) {
-            balances[productVariantId.toString()] = balance;
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('ProductSelectionCard: Error loading UserAction balances: $e');
-    }
-
-    return balances;
   }
 
   /// Updates FormsBloc with stock in hand data so it's available to the next page

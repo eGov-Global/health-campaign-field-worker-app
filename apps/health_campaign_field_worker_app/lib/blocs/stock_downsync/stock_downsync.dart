@@ -47,9 +47,6 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
 
   final UserActionLocalRepository userActionLocalRepository;
 
-  static const String _rejectedStatus = 'REJECTED';
-  static const String _dispatchedTransaction = 'DISPATCHED';
-
   StockDownSyncBloc({
     required this.localSecureStore,
     required this.projectFacilityLocalRepository,
@@ -184,9 +181,9 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
       );
 
       // No new stock rows to pull means the download handler (which owns
-      // the balance downsync + overstatement heal) never runs — refresh and
-      // heal the balance rows here so a plain "Sync Stock Data" tap still
-      // corrects balances written by pre-fix app versions.
+      // the STOCK_BALANCE UserAction downsync) never runs — refresh those
+      // rows here so a plain "Sync Stock Data" tap still picks up UserAction
+      // counts recorded on the server.
       if (totalCount == 0) {
         await downSyncStockBalances(
           event.projectModel.id,
@@ -251,7 +248,6 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
 
         int totalCount = event.initialServerCount;
         int syncedCount = 0;
-        final downsyncedStocks = <String, StockModel>{};
 
         emit(StockDownSyncState.inProgress(syncedCount, totalCount));
 
@@ -268,9 +264,6 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
           if (stockEntries.isEmpty) break;
 
           await stockLocalRepository.bulkCreate(stockEntries);
-          for (final stock in stockEntries) {
-            downsyncedStocks[stock.clientReferenceId] = stock;
-          }
 
           syncedCount += stockEntries.length;
 
@@ -286,15 +279,13 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
           emit(StockDownSyncState.inProgress(syncedCount, totalCount));
         }
 
-        // After stock download, downsync stock balance user actions
+        // After stock download, downsync the STOCK_BALANCE user actions
+        // (UserAction count). Rejected dispatches need no balance fix-up:
+        // the StockModel count is derived from the rows just stored, which
+        // already carry the rejection.
         await downSyncStockBalances(
           event.projectModel.id,
           projectReferenceID: event.projectModel.referenceID,
-        );
-        await _reconcileRejectedOutgoingStocks(
-          projectId: event.projectModel.id,
-          projectReferenceID: event.projectModel.referenceID,
-          stockEntries: downsyncedStocks.values.toList(),
         );
 
         emit(StockDownSyncState.success(syncedCount, totalCount));
@@ -356,14 +347,13 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
           facilityIds.first.isEmpty) return;
 
       // Build balance keys for all facility × product variant combinations.
-      // Includes the active compact shape, the intermediate readable shape
-      // (pre-compaction, post-suffix), and the legacy shape (pre-suffix) so
-      // server rows written by any prior version are not missed during
-      // downsync.
+      // Only the active key shape is fetched: the UserAction count is only
+      // ever written under it, and rows under older key shapes carry just
+      // the retired running `balance`.
       // projectReferenceID is passed explicitly: this code path runs during
       // project bloc startup, before FlowBuilderSingleton().selectedProject
       // is populated, so the singleton fallback would yield an empty suffix
-      // and silently degrade the new-shape key to the legacy shape.
+      // and silently degrade the key to the pre-suffix shape.
       final balanceKeys = <String>{};
       for (final facilityId in facilityIds) {
         for (final productVariantId in productVariantIds) {
@@ -372,13 +362,6 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
             productVariantId,
             projectReferenceID: projectReferenceID,
           ));
-          balanceKeys.add(readableBalanceKey(
-            facilityId,
-            productVariantId,
-            projectReferenceID: projectReferenceID,
-          ));
-          balanceKeys
-              .add(legacyBalanceKey(facilityId, productVariantId));
         }
       }
 
@@ -387,16 +370,7 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
         UserActionSearchModel(clientReferenceId: balanceKeys.toList()),
       );
 
-      if (remoteBalances.isEmpty) {
-        await _healOverstatedBalances(
-          facilityIds: facilityIds,
-          productVariantIds: productVariantIds,
-          projectId: projectId,
-          isDistributor: isDistributor,
-          projectReferenceID: projectReferenceID,
-        );
-        return;
-      }
+      if (remoteBalances.isEmpty) return;
 
       // For each fetched balance, create or update locally
       for (final remoteBalance in remoteBalances) {
@@ -446,261 +420,9 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
           );
         }
       }
-
-      await _healOverstatedBalances(
-        facilityIds: facilityIds,
-        productVariantIds: productVariantIds,
-        projectId: projectId,
-        isDistributor: isDistributor,
-        projectReferenceID: projectReferenceID,
-      );
     } catch (e) {
       debugPrint('Stock balance downsync error: $e');
     }
-  }
-
-  /// Clamps stored STOCK_BALANCE rows that exceed the stock-derived ceiling.
-  ///
-  /// A stored balance can only sit at or below the stock-in-hand computed
-  /// from the local StockModel rows: deliveries and partial use subtract from
-  /// it, and nothing raises it outside a stock transaction (which itself
-  /// lands as a StockModel row first). A stored value above that ceiling is
-  /// therefore an artifact of the historical double-count — an inbound
-  /// `DISPATCHED + status=ACCEPTED` row summed next to its own RECEIVED row —
-  /// written by app versions that predate
-  /// [StockCalculationUtils.claimedInboundDispatchRefs]. Rewrite it to the
-  /// ceiling with an op-log entry so the correction also reaches the server
-  /// on the next upsync.
-  Future<void> _healOverstatedBalances({
-    required List<String> facilityIds,
-    required List<String> productVariantIds,
-    required String projectId,
-    required bool isDistributor,
-    String? projectReferenceID,
-  }) async {
-    for (final facilityId in facilityIds) {
-      final received = await stockLocalRepository.search(
-        StockSearchModel(receiverId: facilityId, referenceId: projectId),
-      );
-      final sent = await stockLocalRepository.search(
-        StockSearchModel(senderId: facilityId, referenceId: projectId),
-      );
-      final byRef = <String, StockModel>{};
-      for (final s in received) {
-        byRef[s.clientReferenceId] = s;
-      }
-      for (final s in sent) {
-        byRef[s.clientReferenceId] = s;
-      }
-      final stocks = byRef.values.toList();
-      if (stocks.isEmpty) continue;
-
-      for (final productVariantId in productVariantIds) {
-        final key = generateBalanceKey(
-          facilityId,
-          productVariantId,
-          projectReferenceID: projectReferenceID,
-        );
-        final rows = await userActionLocalRepository.search(
-          UserActionSearchModel(clientReferenceId: [key]),
-        );
-        if (rows.isEmpty) continue;
-        final row = rows.first;
-
-        final fields = row.additionalFields?.fields;
-        if (fields == null) continue;
-        String? storedStr;
-        for (final f in fields) {
-          if (f.key == 'balance') {
-            storedStr = f.value?.toString();
-            break;
-          }
-        }
-        final stored = double.tryParse(storedStr ?? '');
-        if (stored == null) continue;
-
-        final ceiling = StockCalculationUtils.getStockBalance(
-          stockList: stocks,
-          facilityId: facilityId,
-          productId: productVariantId,
-          isDistributor: isDistributor,
-        );
-        if (stored <= ceiling) continue;
-
-        final updatedFields = [
-          for (final f in fields)
-            if (f.key == 'balance')
-              AdditionalField('balance', ceiling.toString())
-            else
-              f,
-        ];
-        await userActionLocalRepository.update(
-          row.copyWith(
-            isSync: false,
-            additionalFields: UserActionAdditionalFields(
-              version: row.additionalFields?.version ?? 1,
-              fields: updatedFields,
-            ),
-          ),
-        );
-        debugPrint(
-          'STOCK_BALANCE heal: $key clamped $stored -> $ceiling',
-        );
-      }
-    }
-  }
-
-  Future<void> _reconcileRejectedOutgoingStocks({
-    required String projectId,
-    required List<StockModel> stockEntries,
-    String? projectReferenceID,
-  }) async {
-    if (stockEntries.isEmpty) return;
-
-    try {
-      final userObject = await localSecureStore.userRequestModel;
-      final userRoles = userObject?.roles.map((e) => e.code) ?? [];
-      final isDistributor =
-          userRoles.contains(RolesType.distributor.toValue()) ||
-              userRoles.contains(RolesType.communityDistributor.toValue());
-
-      final projectFacilities = await projectFacilityLocalRepository.search(
-        ProjectFacilitySearchModel(projectId: [projectId]),
-      );
-
-      final currentFacilities = projectFacilities.where((pf) {
-        final facilityLevel = pf.additionalFields?.fields
-            .where((f) => f.key == 'facilityLevel')
-            .firstOrNull
-            ?.value;
-        return facilityLevel == null || facilityLevel == 'current';
-      }).toList();
-
-      final facilityIds = isDistributor
-          ? {userObject?.uuid ?? ''}
-          : currentFacilities
-              .map((e) => e.facilityId)
-              .whereType<String>()
-              .toSet();
-
-      facilityIds.removeWhere((element) => element.isEmpty);
-      if (facilityIds.isEmpty) return;
-
-      // Accumulator keyed by "<senderId>|<productVariantId>" so the increase
-      // path can look up both the new and legacy balance row shapes from the
-      // same (facility, productVariant) pair. The `|` separator is safe
-      // because neither id contains it.
-      final rejectedDeltas = <String, double>{};
-
-      for (final stock in stockEntries) {
-        final senderId = stock.senderId;
-        final productVariantId = stock.productVariantId;
-        final status = _getAdditionalFieldValue(stock, 'status');
-        final transactionType = stock.transactionType?.toUpperCase() ?? '';
-
-        if (senderId == null ||
-            productVariantId == null ||
-            !facilityIds.contains(senderId) ||
-            transactionType != _dispatchedTransaction ||
-            status != _rejectedStatus) {
-          continue;
-        }
-
-        final quantity = double.tryParse(stock.quantity ?? '0') ?? 0;
-        if (quantity <= 0) continue;
-
-        final pairKey = '$senderId|$productVariantId';
-        rejectedDeltas[pairKey] = (rejectedDeltas[pairKey] ?? 0) + quantity;
-      }
-
-      for (final entry in rejectedDeltas.entries) {
-        final parts = entry.key.split('|');
-        await _increaseBalance(
-          parts[0],
-          parts[1],
-          entry.value,
-          projectReferenceID: projectReferenceID,
-        );
-      }
-    } catch (e) {
-      debugPrint('Rejected stock balance reconciliation error: $e');
-    }
-  }
-
-  /// Applies a positive delta to the (facility, productVariant) balance row.
-  /// Looks up the new campaign-suffixed key first; if no row exists, falls
-  /// back to the legacy key shape so a downsync that lands before the user
-  /// has triggered the copy-on-first-touch migration still updates the
-  /// correct row.
-  Future<void> _increaseBalance(
-    String facilityId,
-    String productVariantId,
-    double quantity, {
-    String? projectReferenceID,
-  }) async {
-    if (quantity <= 0) return;
-
-    final newKey = generateBalanceKey(
-      facilityId,
-      productVariantId,
-      projectReferenceID: projectReferenceID,
-    );
-    var existing = await userActionLocalRepository.search(
-      UserActionSearchModel(clientReferenceId: [newKey]),
-    );
-
-    if (existing.isEmpty) {
-      final oldKey = legacyBalanceKey(facilityId, productVariantId);
-      if (oldKey != newKey) {
-        existing = await userActionLocalRepository.search(
-          UserActionSearchModel(clientReferenceId: [oldKey]),
-        );
-      }
-    }
-
-    if (existing.isEmpty) return;
-
-    final balanceAction = existing.first;
-    final balanceFieldIndex = balanceAction.additionalFields?.fields
-            ?.indexWhere((field) => field.key == 'balance') ??
-        -1;
-
-    if (balanceFieldIndex < 0) return;
-
-    final currentBalance = double.tryParse(
-          balanceAction.additionalFields?.fields?[balanceFieldIndex].value ??
-              '0',
-        ) ??
-        0;
-
-    final updatedFields = List<AdditionalField>.from(
-        balanceAction.additionalFields?.fields ?? []);
-    updatedFields[balanceFieldIndex] = AdditionalField(
-      'balance',
-      (currentBalance + quantity).toString(),
-    );
-
-    await userActionLocalRepository.update(
-      balanceAction.copyWith(
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        additionalFields: UserActionAdditionalFields(
-          version: balanceAction.additionalFields?.version ?? 1,
-          fields: updatedFields,
-        ),
-      ),
-      createOpLog: false,
-    );
-  }
-
-  String _getAdditionalFieldValue(StockModel stock, String key) {
-    final fields = stock.additionalFields?.fields;
-    if (fields == null) return '';
-    for (final field in fields) {
-      if (field.key == key) {
-        return field.value?.toString().toUpperCase() ?? '';
-      }
-    }
-    return '';
   }
 }
 

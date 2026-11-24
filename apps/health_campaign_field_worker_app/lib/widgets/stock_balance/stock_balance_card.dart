@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 import 'package:digit_data_model/data/repositories/package_repository/local/stock.dart';
 import 'package:digit_data_model/data_model.dart';
-import 'package:digit_data_model/models/entities/user_action.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
@@ -17,6 +16,7 @@ import '../../models/entities/roles_type.dart';
 import '../../utils/function_registries.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 import '../../utils/stock_calculation_utils.dart';
+import '../../utils/stock_user_action_count.dart';
 import '../../utils/utils.dart';
 import '../localized.dart';
 
@@ -68,11 +68,10 @@ class _StockBalanceCardState extends LocalizedState<StockBalanceCard> {
   Future<void> _loadData() async {
     try {
       // Include communityDistributor here — StockBalanceExecutor treats both
-      // roles as "distributor" (executor lines 320-322) and writes balances
-      // under the user's UUID. If the card checked only `distributor`, a CDD
-      // would look up balances under a facility ID while the executor stored
-      // them under the user UUID, and every CDD would silently see empty
-      // stock balances.
+      // roles as "distributor" and records deliveries under the user's UUID.
+      // If the card checked only `distributor`, a CDD would look up delivered
+      // totals under a facility ID while the executor stored them under the
+      // user UUID, and every CDD's deliveries would silently be ignored.
       final isDistributor = context.loggedInUserRoles.any((role) =>
           role.code == RolesType.distributor.toValue() ||
           role.code == RolesType.communityDistributor.toValue());
@@ -146,7 +145,6 @@ class _StockBalanceCardState extends LocalizedState<StockBalanceCard> {
           isDistributor ? context.loggedInUserUuid : autoSelectedFacility?.id;
 
       if (effectiveFacilityId != null) {
-        // Load UserAction balances first (from deliveries) so UI shows them immediately
         _loadInitialBalances(effectiveFacilityId);
         _setupStockListener(effectiveFacilityId);
       }
@@ -178,20 +176,26 @@ class _StockBalanceCardState extends LocalizedState<StockBalanceCard> {
     // current project via `referenceId`. Without the project scope this
     // listener — keyed by the stable user UUID for distributors — would
     // fire on every project's stock changes and pull cross-project rows
-    // into the balance calculation.
+    // into the balance calculation. Both directions are watched: stock in
+    // hand is derived from these rows, so an outgoing dispatch, loss or
+    // damage (sender side) must refresh the card as well as a receipt.
     final projectId = context.projectId;
-    stockRepo.listenToChanges(
-      query: StockSearchModel(
-        receiverId: facilityId,
-        referenceId: projectId,
-      ),
-      listener: (receivedStocks) async {
-        if (!mounted) return;
-        await _refreshBalances(stockRepo, userActionRepo, effectiveFacilityId);
-      },
-    );
+    for (final query in [
+      StockSearchModel(receiverId: effectiveFacilityId, referenceId: projectId),
+      StockSearchModel(senderId: effectiveFacilityId, referenceId: projectId),
+    ]) {
+      stockRepo.listenToChanges(
+        query: query,
+        listener: (_) async {
+          if (!mounted) return;
+          await _refreshBalances(
+              stockRepo, userActionRepo, effectiveFacilityId);
+        },
+      );
+    }
 
-    // Listen to UserAction changes (triggers when delivery creates/updates balance)
+    // Listen to UserAction changes (triggers when a delivery updates the
+    // UserAction count)
     if (balanceKeys.isNotEmpty) {
       userActionRepo.listenToChanges(
         clientReferenceIds: balanceKeys,
@@ -251,7 +255,8 @@ class _StockBalanceCardState extends LocalizedState<StockBalanceCard> {
     final allStocks = allStocksMap.values.toList();
 
     final productIds = _productVariants.map((pv) => pv.id).toList();
-    final balances = StockCalculationUtils.calculateStockInHandForProducts(
+    final stockModelCounts =
+        StockCalculationUtils.calculateStockInHandForProducts(
       stockList: allStocks,
       facilityId: effectiveFacilityId,
       productIds: productIds,
@@ -259,64 +264,26 @@ class _StockBalanceCardState extends LocalizedState<StockBalanceCard> {
       isDistributor: _isDistributor,
     );
 
-    // Fetch UserAction records with saved stock balances (from delivery)
-    final userActionBalances =
-        await _loadUserActionBalances(userActionRepo, effectiveFacilityId);
+    var userActionCounts = <String, double>{};
+    try {
+      userActionCounts = await loadUserActionCounts(
+        repository: userActionRepo,
+        facilityId: effectiveFacilityId,
+        productIds: productIds,
+      );
+    } catch (e) {
+      debugPrint('Error loading UserAction counts: $e');
+    }
 
-    // Merge: UserAction balances take precedence (they include delivery deductions)
-    final mergedBalances = <String, double>{
-      ...balances,
-      ...userActionBalances,
-    };
+    // Stock Balance = StockModel count + UserAction count
+    final balances = addUserActionCounts(stockModelCounts, userActionCounts);
 
-    StockBalanceCache.instance.setCache(effectiveFacilityId, mergedBalances);
+    StockBalanceCache.instance.setCache(effectiveFacilityId, balances);
     if (mounted) {
       setState(() {
-        _stockBalances = mergedBalances;
+        _stockBalances = balances;
       });
     }
-  }
-
-  Future<Map<String, double>> _loadUserActionBalances(
-    UserActionLocalRepository userActionRepo,
-    String facilityId,
-  ) async {
-    final balances = <String, double>{};
-
-    try {
-      // Build balance keys for this facility
-      final balanceKeys = _productVariants
-          .map((pv) => generateBalanceKey(facilityId, pv.id))
-          .toList();
-
-      if (balanceKeys.isEmpty) return balances;
-
-      // Search directly with clientReferenceIds
-      final actions = await userActionRepo.search(
-        UserActionSearchModel(clientReferenceId: balanceKeys),
-      );
-
-      for (final action in actions) {
-        final fields = action.additionalFields?.fields;
-        if (fields == null) continue;
-
-        final productVariantId =
-            fields.firstWhereOrNull((f) => f.key == 'productVariantId')?.value;
-        final balanceStr =
-            fields.firstWhereOrNull((f) => f.key == 'balance')?.value;
-
-        if (productVariantId != null && balanceStr != null) {
-          final balance = double.tryParse(balanceStr);
-          if (balance != null) {
-            balances[productVariantId] = balance;
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error loading UserAction balances: $e');
-    }
-
-    return balances;
   }
 
   Color _getColorForBalance(double balance, Color errorColor) {
