@@ -10,6 +10,7 @@ import 'package:transit_post/data/repositories/local/user_action.dart';
 
 import '../models/entities/roles_type.dart';
 import '../utils/stock_calculation_utils.dart';
+import '../utils/stock_rejection_reconciler.dart';
 import '../utils/utils.dart';
 
 /// Executor that maintains running stock balances in UserAction records.
@@ -269,7 +270,11 @@ class StockBalanceExecutor extends ActionExecutor {
       final readableRow = await findByKey(readableKey);
       if (readableRow != null) {
         final balance = _extractBalance(readableRow);
-        return _BalanceLookup(legacySeed: balance);
+        return _BalanceLookup(
+          legacySeed: balance,
+          legacyCreditFields: StockRejectionReconciler.creditLedgerFields(
+              readableRow.additionalFields?.fields),
+        );
       }
     }
 
@@ -279,7 +284,11 @@ class StockBalanceExecutor extends ActionExecutor {
     }
     final legacyRow = await findByKey(legacyKey);
     if (legacyRow == null) return const _BalanceLookup();
-    return _BalanceLookup(legacySeed: _extractBalance(legacyRow));
+    return _BalanceLookup(
+      legacySeed: _extractBalance(legacyRow),
+      legacyCreditFields: StockRejectionReconciler.creditLedgerFields(
+          legacyRow.additionalFields?.fields),
+    );
   }
 
   double _extractBalance(UserActionModel row) {
@@ -445,6 +454,7 @@ class StockBalanceExecutor extends ActionExecutor {
           AdditionalField('facilityId', facilityId),
           AdditionalField('productVariantId', productVariantId),
           AdditionalField('deliveredQuantity', deliveredQuantity.toString()),
+          ...lookup.creditLedger,
         ],
       ),
       auditDetails: existing?.auditDetails ??
@@ -591,6 +601,7 @@ class StockBalanceExecutor extends ActionExecutor {
           AdditionalField('balance', newBalance.toString()),
           AdditionalField('facilityId', facilityId),
           AdditionalField('productVariantId', productVariantId),
+          ...lookup.creditLedger,
         ],
       ),
       auditDetails: existing?.auditDetails ??
@@ -620,5 +631,23 @@ class StockBalanceExecutor extends ActionExecutor {
 class _BalanceLookup {
   final UserActionModel? existing;
   final double? legacySeed;
-  const _BalanceLookup({this.existing, this.legacySeed});
+
+  /// Credit-ledger fields of the legacy row the seed came from, so the
+  /// migrated row keeps the record of rejections already credited.
+  final List<AdditionalField> legacyCreditFields;
+
+  const _BalanceLookup({
+    this.existing,
+    this.legacySeed,
+    this.legacyCreditFields = const [],
+  });
+
+  /// Credit-ledger fields to carry into the rewritten balance row. Every
+  /// writer here rebuilds the field list from scratch; without this the next
+  /// transaction would erase the ledger and let another device credit the
+  /// same rejection again (see StockRejectionReconciler).
+  List<AdditionalField> get creditLedger => existing != null
+      ? StockRejectionReconciler.creditLedgerFields(
+          existing!.additionalFields?.fields)
+      : legacyCreditFields;
 }

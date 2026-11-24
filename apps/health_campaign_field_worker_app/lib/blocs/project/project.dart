@@ -43,6 +43,7 @@ import '../../utils/download_image.dart';
 import '../../utils/environment_config.dart';
 import '../../utils/least_level_boundary_singleton.dart';
 import '../../utils/stock_calculation_utils.dart';
+import '../../utils/stock_rejection_reconciler.dart';
 import '../../utils/utils.dart';
 import '../auth/auth.dart';
 import '../push_notification/push_notification.dart';
@@ -1310,6 +1311,10 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         ));
       }
 
+      // Captured before the count so no row changed during this sync falls
+      // outside the next sync's `lastChangedSince` window.
+      final currentSyncTime = DateTime.now().millisecondsSinceEpoch;
+
       final totalCount = await (stockRemoteRepository as StockRemoteRepository)
           .fetchTotalCount(
         stockSearchModel,
@@ -1318,12 +1323,33 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         includeOnlyUpdatedByOthers: true,
       );
 
-      if (totalCount <= 0) return;
+      if (totalCount <= 0) {
+        // Nothing changed since lastSyncedTime, so the sync is complete up to
+        // currentSyncTime. Recording it keeps `lastSyncedTime == null`
+        // meaning "never completed a download" — StockRejectionReconciler
+        // relies on that to skip only the true first (full-history) download,
+        // not one that follows a run of empty syncs.
+        await downSyncLocalRepository.update(DownsyncModel(
+          offset: 0,
+          limit: 50,
+          lastSyncedTime: currentSyncTime,
+          totalCount: 0,
+          locality: localityKey,
+        ));
+        // Still pull STOCK_BALANCE rows from the server. This adds rows the
+        // device doesn't have yet (e.g. a balance another device created);
+        // rows already on the device keep their local values, since
+        // downSyncStockBalances never overwrites them.
+        // Mirrors StockDownSyncBloc._handleCheckTotalCount.
+        await downSyncStockBalances(project.id,
+            projectReferenceID: project.referenceID);
+        return;
+      }
 
       const batchSize = 50;
       int offset = 0;
       int syncedCount = 0;
-      final currentSyncTime = DateTime.now().millisecondsSinceEpoch;
+      final downloadedStocks = <String, StockModel>{};
 
       while (syncedCount < totalCount) {
         final stockEntries = await stockRemoteRepository.search(
@@ -1337,21 +1363,42 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         if (stockEntries.isEmpty) break;
 
         await stockLocalRepository.bulkCreate(stockEntries);
-
-        await downSyncLocalRepository.update(DownsyncModel(
-          offset: 0,
-          limit: batchSize,
-          lastSyncedTime: currentSyncTime,
-          totalCount: totalCount,
-          locality: localityKey,
-        ));
+        for (final stock in stockEntries) {
+          downloadedStocks[stock.clientReferenceId] = stock;
+        }
 
         offset += stockEntries.length;
         syncedCount += stockEntries.length;
       }
 
+      // Record the sync only after every page is stored. Writing it per page
+      // meant a failure part-way through moved lastSyncedTime past rows that
+      // were never downloaded (and never credited by the rejection
+      // reconciliation below), so they were skipped for good.
+      await downSyncLocalRepository.update(DownsyncModel(
+        offset: 0,
+        limit: batchSize,
+        lastSyncedTime: currentSyncTime,
+        totalCount: totalCount,
+        locality: localityKey,
+      ));
+
       await downSyncStockBalances(project.id,
           projectReferenceID: project.referenceID);
+
+      // Credit back dispatches this facility sent that the receiver rejected.
+      // Must run after downSyncStockBalances so the credit lands on the
+      // current server balance.
+      await StockRejectionReconciler(
+        localSecureStore: localSecureStore,
+        projectFacilityLocalRepository: projectFacilityLocalRepository,
+        userActionLocalRepository: userActionLocalRepository,
+      ).reconcile(
+        projectId: project.id,
+        projectReferenceID: project.referenceID,
+        stockEntries: downloadedStocks.values.toList(),
+        isInitialDownload: lastSyncedTime == null,
+      );
 
       // TODO: COMMENTING USER CREATION ON DOWNSYNC
       // await _createStockBalanceUserActions(

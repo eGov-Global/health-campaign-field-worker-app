@@ -17,6 +17,7 @@ import '../../utils/stock_calculation_utils.dart';
 import '../../models/downsync/downsync.dart';
 import '../../models/entities/roles_type.dart';
 import '../../utils/background_service.dart';
+import '../../utils/stock_rejection_reconciler.dart';
 
 part 'stock_downsync.freezed.dart';
 
@@ -47,8 +48,12 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
 
   final UserActionLocalRepository userActionLocalRepository;
 
-  static const String _rejectedStatus = 'REJECTED';
-  static const String _dispatchedTransaction = 'DISPATCHED';
+  late final StockRejectionReconciler _rejectionReconciler =
+      StockRejectionReconciler(
+    localSecureStore: localSecureStore,
+    projectFacilityLocalRepository: projectFacilityLocalRepository,
+    userActionLocalRepository: userActionLocalRepository,
+  );
 
   StockDownSyncBloc({
     required this.localSecureStore,
@@ -251,50 +256,74 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
 
         int totalCount = event.initialServerCount;
         int syncedCount = 0;
+        int offset = 0;
         final downsyncedStocks = <String, StockModel>{};
+        // Taken before the first request so rows changed while this download
+        // runs fall inside the next sync's lastChangedSince window.
+        final currentSyncTime = DateTime.now().millisecondsSinceEpoch;
 
         emit(StockDownSyncState.inProgress(syncedCount, totalCount));
 
-        // Fetch stock entries in batches to allow progress updates
-        while (syncedCount < totalCount) {
+        // Page through with an advancing offset. lastChangedSince stays fixed
+        // for the whole download, so a constant offset of 0 would return the
+        // first page every time and never reach the rest.
+        while (true) {
           final stockEntries = await stockRemoteRepository.search(
             stockSearchModel,
-            offSet: 0,
+            offSet: offset,
             limit: event.batchSize,
             lastSyncedTime: lastSyncedTime,
-            includeOnlyUpdatedByOthers:true,
+            includeOnlyUpdatedByOthers: true,
           );
 
           if (stockEntries.isEmpty) break;
 
           await stockLocalRepository.bulkCreate(stockEntries);
+          final knownBefore = downsyncedStocks.length;
           for (final stock in stockEntries) {
             downsyncedStocks[stock.clientReferenceId] = stock;
           }
+          // Safety stop: a page with nothing new means the server is not
+          // honouring the offset, so further requests would loop forever.
+          if (downsyncedStocks.length == knownBefore) break;
 
+          offset += stockEntries.length;
           syncedCount += stockEntries.length;
-
-          // Update downsync record, keep offset 0, update lastSyncedTime
-          await downSyncLocalRepository.update(DownsyncModel(
-            offset: 0,
-            limit: event.batchSize,
-            lastSyncedTime: DateTime.now().millisecondsSinceEpoch,
-            totalCount: totalCount,
-            locality: localityKey,
-          ));
+          // Rows changed after the count check can push the total up.
+          if (syncedCount > totalCount) totalCount = syncedCount;
 
           emit(StockDownSyncState.inProgress(syncedCount, totalCount));
+
+          // Done once every counted row is in and the server returned a short
+          // page. A full page means more rows may follow (e.g. changed after
+          // the count check), so keep going until a short or empty page.
+          if (syncedCount >= totalCount &&
+              stockEntries.length < event.batchSize) {
+            break;
+          }
         }
+
+        // Record the sync only after every page is stored. Writing it per page
+        // meant a failure part-way through moved lastSyncedTime past rows that
+        // were never downloaded, so they were skipped for good.
+        await downSyncLocalRepository.update(DownsyncModel(
+          offset: 0,
+          limit: event.batchSize,
+          lastSyncedTime: currentSyncTime,
+          totalCount: totalCount,
+          locality: localityKey,
+        ));
 
         // After stock download, downsync stock balance user actions
         await downSyncStockBalances(
           event.projectModel.id,
           projectReferenceID: event.projectModel.referenceID,
         );
-        await _reconcileRejectedOutgoingStocks(
+        await _rejectionReconciler.reconcile(
           projectId: event.projectModel.id,
           projectReferenceID: event.projectModel.referenceID,
           stockEntries: downsyncedStocks.values.toList(),
+          isInitialDownload: lastSyncedTime == null,
         );
 
         emit(StockDownSyncState.success(syncedCount, totalCount));
@@ -393,6 +422,7 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
           productVariantIds: productVariantIds,
           projectId: projectId,
           isDistributor: isDistributor,
+          userUuid: userObject?.uuid ?? '',
           projectReferenceID: projectReferenceID,
         );
         return;
@@ -452,6 +482,7 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
         productVariantIds: productVariantIds,
         projectId: projectId,
         isDistributor: isDistributor,
+        userUuid: userObject?.uuid ?? '',
         projectReferenceID: projectReferenceID,
       );
     } catch (e) {
@@ -476,8 +507,12 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
     required List<String> productVariantIds,
     required String projectId,
     required bool isDistributor,
+    required String userUuid,
     String? projectReferenceID,
   }) async {
+    // The correction is written as this user (see stampBalanceWrite); without
+    // a logged-in user it could never be uploaded.
+    if (userUuid.isEmpty) return;
     for (final facilityId in facilityIds) {
       final received = await stockLocalRepository.search(
         StockSearchModel(receiverId: facilityId, referenceId: projectId),
@@ -534,13 +569,19 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
             else
               f,
         ];
+        // stampBalanceWrite marks the correction as this user's: an upload
+        // belongs to the row's last modifier, and a device only uploads its
+        // own user's operations.
         await userActionLocalRepository.update(
-          row.copyWith(
-            isSync: false,
-            additionalFields: UserActionAdditionalFields(
-              version: row.additionalFields?.version ?? 1,
-              fields: updatedFields,
+          stampBalanceWrite(
+            row.copyWith(
+              isSync: false,
+              additionalFields: UserActionAdditionalFields(
+                version: row.additionalFields?.version ?? 1,
+                fields: updatedFields,
+              ),
             ),
+            userUuid,
           ),
         );
         debugPrint(
@@ -548,159 +589,6 @@ class StockDownSyncBloc extends Bloc<StockDownSyncEvent, StockDownSyncState> {
         );
       }
     }
-  }
-
-  Future<void> _reconcileRejectedOutgoingStocks({
-    required String projectId,
-    required List<StockModel> stockEntries,
-    String? projectReferenceID,
-  }) async {
-    if (stockEntries.isEmpty) return;
-
-    try {
-      final userObject = await localSecureStore.userRequestModel;
-      final userRoles = userObject?.roles.map((e) => e.code) ?? [];
-      final isDistributor =
-          userRoles.contains(RolesType.distributor.toValue()) ||
-              userRoles.contains(RolesType.communityDistributor.toValue());
-
-      final projectFacilities = await projectFacilityLocalRepository.search(
-        ProjectFacilitySearchModel(projectId: [projectId]),
-      );
-
-      final currentFacilities = projectFacilities.where((pf) {
-        final facilityLevel = pf.additionalFields?.fields
-            .where((f) => f.key == 'facilityLevel')
-            .firstOrNull
-            ?.value;
-        return facilityLevel == null || facilityLevel == 'current';
-      }).toList();
-
-      final facilityIds = isDistributor
-          ? {userObject?.uuid ?? ''}
-          : currentFacilities
-              .map((e) => e.facilityId)
-              .whereType<String>()
-              .toSet();
-
-      facilityIds.removeWhere((element) => element.isEmpty);
-      if (facilityIds.isEmpty) return;
-
-      // Accumulator keyed by "<senderId>|<productVariantId>" so the increase
-      // path can look up both the new and legacy balance row shapes from the
-      // same (facility, productVariant) pair. The `|` separator is safe
-      // because neither id contains it.
-      final rejectedDeltas = <String, double>{};
-
-      for (final stock in stockEntries) {
-        final senderId = stock.senderId;
-        final productVariantId = stock.productVariantId;
-        final status = _getAdditionalFieldValue(stock, 'status');
-        final transactionType = stock.transactionType?.toUpperCase() ?? '';
-
-        if (senderId == null ||
-            productVariantId == null ||
-            !facilityIds.contains(senderId) ||
-            transactionType != _dispatchedTransaction ||
-            status != _rejectedStatus) {
-          continue;
-        }
-
-        final quantity = double.tryParse(stock.quantity ?? '0') ?? 0;
-        if (quantity <= 0) continue;
-
-        final pairKey = '$senderId|$productVariantId';
-        rejectedDeltas[pairKey] = (rejectedDeltas[pairKey] ?? 0) + quantity;
-      }
-
-      for (final entry in rejectedDeltas.entries) {
-        final parts = entry.key.split('|');
-        await _increaseBalance(
-          parts[0],
-          parts[1],
-          entry.value,
-          projectReferenceID: projectReferenceID,
-        );
-      }
-    } catch (e) {
-      debugPrint('Rejected stock balance reconciliation error: $e');
-    }
-  }
-
-  /// Applies a positive delta to the (facility, productVariant) balance row.
-  /// Looks up the new campaign-suffixed key first; if no row exists, falls
-  /// back to the legacy key shape so a downsync that lands before the user
-  /// has triggered the copy-on-first-touch migration still updates the
-  /// correct row.
-  Future<void> _increaseBalance(
-    String facilityId,
-    String productVariantId,
-    double quantity, {
-    String? projectReferenceID,
-  }) async {
-    if (quantity <= 0) return;
-
-    final newKey = generateBalanceKey(
-      facilityId,
-      productVariantId,
-      projectReferenceID: projectReferenceID,
-    );
-    var existing = await userActionLocalRepository.search(
-      UserActionSearchModel(clientReferenceId: [newKey]),
-    );
-
-    if (existing.isEmpty) {
-      final oldKey = legacyBalanceKey(facilityId, productVariantId);
-      if (oldKey != newKey) {
-        existing = await userActionLocalRepository.search(
-          UserActionSearchModel(clientReferenceId: [oldKey]),
-        );
-      }
-    }
-
-    if (existing.isEmpty) return;
-
-    final balanceAction = existing.first;
-    final balanceFieldIndex = balanceAction.additionalFields?.fields
-            ?.indexWhere((field) => field.key == 'balance') ??
-        -1;
-
-    if (balanceFieldIndex < 0) return;
-
-    final currentBalance = double.tryParse(
-          balanceAction.additionalFields?.fields?[balanceFieldIndex].value ??
-              '0',
-        ) ??
-        0;
-
-    final updatedFields = List<AdditionalField>.from(
-        balanceAction.additionalFields?.fields ?? []);
-    updatedFields[balanceFieldIndex] = AdditionalField(
-      'balance',
-      (currentBalance + quantity).toString(),
-    );
-
-    await userActionLocalRepository.update(
-      balanceAction.copyWith(
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        additionalFields: UserActionAdditionalFields(
-          version: balanceAction.additionalFields?.version ?? 1,
-          fields: updatedFields,
-        ),
-      ),
-      createOpLog: false,
-    );
-  }
-
-  String _getAdditionalFieldValue(StockModel stock, String key) {
-    final fields = stock.additionalFields?.fields;
-    if (fields == null) return '';
-    for (final field in fields) {
-      if (field.key == key) {
-        return field.value?.toString().toUpperCase() ?? '';
-      }
-    }
-    return '';
   }
 }
 

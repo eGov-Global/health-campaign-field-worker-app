@@ -1,5 +1,31 @@
 import 'package:digit_data_model/data_model.dart';
+import 'package:digit_data_model/models/entities/user_action.dart';
 import 'package:digit_flow_builder/utils/utils.dart';
+
+/// Marks a STOCK_BALANCE row as modified by [userUuid] now, for a write that
+/// has to reach the server.
+///
+/// An upload operation belongs to the row's `clientAuditDetails.lastModifiedBy`
+/// (DataRepository.createOplogEntry), and a device only uploads operations
+/// owned by its logged-in user. A write that keeps the audit details of a row
+/// last changed by someone else — e.g. one downloaded from the server on a
+/// facility several users share — would stay on this device for good. Also
+/// fills in `auditDetails` when missing, since no upload operation is created
+/// without it.
+UserActionModel stampBalanceWrite(UserActionModel row, String userUuid) {
+  final now = DateTime.now().millisecondsSinceEpoch;
+  return row.copyWith(
+    timestamp: now,
+    auditDetails:
+        row.auditDetails ?? AuditDetails(createdBy: userUuid, createdTime: now),
+    clientAuditDetails: ClientAuditDetails(
+      createdBy: row.clientAuditDetails?.createdBy ?? userUuid,
+      createdTime: row.clientAuditDetails?.createdTime ?? now,
+      lastModifiedBy: userUuid,
+      lastModifiedTime: now,
+    ),
+  );
+}
 
 /// Derives the campaign-suffix segment from a project `referenceID`.
 /// Returns text after the last `-` (e.g. `CMP-2025-08-04-004846` → `004846`);
