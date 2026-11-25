@@ -104,6 +104,11 @@ class DigitScannerPage extends LocalizedStatefulWidget {
     return regex;
   }
 
+  /// Whether codes typed on the plain-QR manual-entry form are stored with
+  /// [DigitScannerUtils.manualEntryPrefix] (opt-in `manualEntryPrefix`
+  /// validation). GS1 manual entries are always prefixed.
+  bool get prefixManualQrCodes => validations.manualEntryPrefix;
+
   /// Gets the scan limit exceeded message from validations
   String? get scanLimitMessage => validations?.scanLimitMessage;
 
@@ -200,6 +205,11 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
     debugPrint('Unexpected date type: ${value.runtimeType}');
     return DateTime.now();
   }
+
+  /// The value stored for a code typed on the plain-QR manual-entry form.
+  String _manualQrValue(String code) => widget.prefixManualQrCodes
+      ? '${DigitScannerUtils.manualEntryPrefix}$code'
+      : code;
 
   @override
   void initState() {
@@ -825,7 +835,8 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
                               final existingQrCodes = state.qrCodes.isNotEmpty
                                   ? state.qrCodes
                                   : codes;
-                              if (existingQrCodes.contains(manualValue)) {
+                              if (DigitScannerUtils.containsQrCode(
+                                  existingQrCodes, manualValue)) {
                                 Toast.showToast(
                                   context,
                                   type: ToastType.error,
@@ -836,11 +847,12 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
                                 return;
                               }
 
+                              final storedValue = _manualQrValue(manualValue);
                               final updatedQRCodes =
                                   List<String>.from(state.qrCodes)
-                                    ..add(manualValue);
+                                    ..add(storedValue);
 
-                              codes.add(manualValue);
+                              codes.add(storedValue);
                               bloc.add(
                                 DigitScannerEvent.handleScanner(
                                     barCode: state.barCodes,
@@ -1105,7 +1117,8 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
                                 : codes;
 
                             // Check if QR code already scanned
-                            if (existingQrCodes.contains(manualValue)) {
+                            if (DigitScannerUtils.containsQrCode(
+                                existingQrCodes, manualValue)) {
                               Toast.showToast(
                                 context,
                                 type: ToastType.error,
@@ -1134,7 +1147,7 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
 
                             final updatedQRCodes =
                                 List<String>.from(existingQrCodes)
-                                  ..add(manualValue);
+                                  ..add(_manualQrValue(manualValue));
                             codes = updatedQRCodes;
                             bloc.add(
                               DigitScannerEvent.handleScanner(
@@ -1621,7 +1634,10 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
                         // QR code display — render label:value pairs when the
                         // scanned payload is a JSON object; otherwise fall back
                         // to the trimmed raw string.
-                        final rawQr = effectiveQrCodes[index].toString();
+                        // Show the code without the manual-entry prefix,
+                        // as GS1 entries are shown
+                        final rawQr = DigitScannerUtils.stripManualPrefix(
+                            effectiveQrCodes[index].toString());
                         final qrPairs = _tryParseJsonMap(rawQr);
                         final isPairView = qrPairs != null;
                         return ListTile(

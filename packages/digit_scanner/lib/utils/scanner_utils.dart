@@ -222,7 +222,8 @@ class DigitScannerUtils {
             }
           }
 
-          if (bloc.state.qrCodes.contains(barcodes.first.displayValue)) {
+          if (containsQrCode(
+              bloc.state.qrCodes, barcodes.first.displayValue ?? '')) {
             // Handle error if the QR code is already scanned
             await handleError(
                 localizations.translate(i18.scanner.resourceAlreadyScanned));
@@ -416,6 +417,14 @@ class DigitScannerUtils {
   static String stripManualPrefix(String barcode) => isManualEntry(barcode)
       ? barcode.trim().substring(manualEntryPrefix.length)
       : barcode;
+
+  /// Whether [codes] already holds the plain QR [code], ignoring
+  /// [manualEntryPrefix] on either side so a typed code and the same code
+  /// scanned with the camera count as duplicates.
+  static bool containsQrCode(Iterable<String> codes, String code) {
+    final target = stripManualPrefix(code);
+    return codes.any((c) => stripManualPrefix(c) == target);
+  }
 
   /// Serializes GS1 barcode data to a form value string.
   /// Format: key1:value1|key2:value2 per barcode, semicolons between barcodes.

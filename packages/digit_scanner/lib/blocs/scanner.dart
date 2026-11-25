@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:gs1_barcode_parser/gs1_barcode_parser.dart';
 
+import '../utils/scanner_utils.dart';
+
 part 'scanner.freezed.dart';
 
 typedef DigitScannerEmitter = Emitter<DigitScannerState>;
@@ -58,7 +60,9 @@ class DigitScannerBloc extends Bloc<DigitScannerEvent, DigitScannerState> {
       var invalidQRCodeCount = 0;
       for (final q in event.qrCode) {
         final qt = q.trim();
-        if (qt.isNotEmpty && pattern.hasMatch(qt)) {
+        // Match the code itself, not the manual-entry prefix it may carry
+        if (qt.isNotEmpty &&
+            pattern.hasMatch(DigitScannerUtils.stripManualPrefix(qt))) {
           validQRCodes.add(qt);
         } else if (qt.isNotEmpty) {
           invalidQRCodeCount++;

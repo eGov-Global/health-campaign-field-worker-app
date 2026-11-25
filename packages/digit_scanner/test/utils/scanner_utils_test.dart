@@ -1,3 +1,5 @@
+import 'package:digit_scanner/models/scanner_validation.dart';
+import 'package:digit_scanner/pages/qr_scanner.dart';
 import 'package:digit_scanner/utils/scanner_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gs1_barcode_parser/gs1_barcode_parser.dart';
@@ -38,6 +40,28 @@ void main() {
           DigitScannerUtils.deserializeGs1Barcodes(plain));
       expect(DigitScannerUtils.isManualEntry('(manual)$plain'), isTrue);
       expect(DigitScannerUtils.isManualEntry(plain), isFalse);
+    });
+
+    test('treats a typed QR code and the same scanned code as duplicates', () {
+      expect(DigitScannerUtils.containsQrCode(['(manual)QR1', 'QR2'], 'QR1'),
+          isTrue);
+      expect(DigitScannerUtils.containsQrCode(['QR1'], '(manual)QR1'), isTrue);
+      expect(DigitScannerUtils.containsQrCode(['QR2'], 'QR1'), isFalse);
+    });
+
+    test('prefixes plain QR codes only when the field opts in', () {
+      const optIn = [ScannerValidation(type: 'manualEntryPrefix', value: true)];
+      const optInString = [
+        ScannerValidation(type: 'manualEntryPrefix', value: 'true')
+      ];
+      const optOut = [ScannerValidation(type: 'isGS1', value: false)];
+
+      expect(optIn.manualEntryPrefix, isTrue);
+      expect(optInString.manualEntryPrefix, isTrue);
+      expect(optOut.manualEntryPrefix, isFalse);
+      expect(const DigitScannerPage(validations: optIn).prefixManualQrCodes,
+          isTrue);
+      expect(const DigitScannerPage().prefixManualQrCodes, isFalse);
     });
   });
 }

@@ -388,14 +388,20 @@ class ScannerComparisonUtils {
 
     // Plain QR scans are stored as a comma-separated list ("QR1, QR2"),
     // which extractComparisonValues reads as one legacy GS1 barcode. Match
-    // a plain scanned code against each entry of that list instead.
+    // a plain scanned code against each entry of that list instead. An
+    // entry typed in by hand carries the manual-entry prefix
+    // ("(manual)QR1, QR2"), which is ignored.
     final target = scannedValue.trim();
     final isGs1 =
         target.contains('|') || RegExp(r'^\d{2}:').hasMatch(target);
     if (target.isEmpty || isGs1) return false;
-    return storedValue
-        .split(RegExp('[,;]'))
-        .any((code) => code.trim() == target);
+    return storedValue.split(RegExp('[,;]')).any((code) {
+      var entry = code.trim();
+      if (entry.startsWith(manualEntryPrefix)) {
+        entry = entry.substring(manualEntryPrefix.length).trim();
+      }
+      return entry == target;
+    });
   }
 
   /// Extracts comparison values from serialized GS1 barcode strings.

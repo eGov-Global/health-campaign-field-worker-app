@@ -61,6 +61,19 @@ extension ScannerValidationListExt on List<ScannerValidation>? {
     return false;
   }
 
+  /// Whether a code typed on the plain-QR manual-entry form is stored with
+  /// the `(manual)` prefix. GS1 manual entries are always prefixed; plain QR
+  /// codes opt in per field because some are later looked up by exact value
+  /// (e.g. a beneficiary tag), which a prefixed value would no longer match.
+  bool get manualEntryPrefix {
+    final validation =
+        this?.firstWhereOrNull((v) => v.type == 'manualEntryPrefix');
+    final value = validation?.value;
+    if (value is bool) return value;
+    if (value is String) return value.toLowerCase() == 'true';
+    return false;
+  }
+
   /// Gets the regex pattern for validation
   String? get pattern {
     final validation = this?.firstWhereOrNull((v) => v.type == 'pattern');

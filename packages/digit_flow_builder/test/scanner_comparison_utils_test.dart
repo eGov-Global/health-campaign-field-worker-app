@@ -63,6 +63,15 @@ void main() {
         isFalse,
       );
     });
+
+    test('matches plain QR codes stored with the manual-entry prefix', () {
+      const stored = '(manual)QR1, QR2, (manual)QR3';
+      expect(ScannerComparisonUtils.storedValueContains(stored, 'QR1'), isTrue);
+      expect(ScannerComparisonUtils.storedValueContains(stored, 'QR2'), isTrue);
+      expect(ScannerComparisonUtils.storedValueContains(stored, 'QR3'), isTrue);
+      expect(
+          ScannerComparisonUtils.storedValueContains(stored, 'QR4'), isFalse);
+    });
   });
 
   group('jsonSafeFragments', () {

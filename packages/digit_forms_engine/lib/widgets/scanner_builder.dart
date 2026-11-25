@@ -454,8 +454,11 @@ class JsonSchemaScannerBuilder extends JsonSchemaBuilder<String> {
                             items: [
                               LabelValueItem(
                                 label: label ?? 'Voucher code',
-                                // Show all QR codes comma-separated
-                                value: displayQrCodes.join(', '),
+                                // Show all QR codes comma-separated, without
+                                // the manual-entry prefix (kept in the value)
+                                value: displayQrCodes
+                                    .map(DigitScannerUtils.stripManualPrefix)
+                                    .join(', '),
                                 labelFlex: 5,
                                 maxLines: 5,
                                 padding: EdgeInsets.zero,

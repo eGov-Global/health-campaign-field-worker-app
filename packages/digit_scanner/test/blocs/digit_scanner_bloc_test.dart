@@ -44,5 +44,18 @@ void main() {
         DigitScannerState(barCodes: DigitScannerTestConstants().testBarCode)
       ],
     );
+
+    // A typed QR code keeps its manual-entry prefix but is checked against
+    // the field's pattern without it
+    blocTest<DigitScannerBloc, DigitScannerState>(
+      'validates a manually entered QR code without its prefix',
+      build: () => DigitScannerBloc(const DigitScannerState()),
+      act: (bloc) => bloc.add(const DigitScannerEvent.handleScanner(
+          qrCode: ['(manual)ABC123', 'abc'], regex: r'^[A-Z0-9]+$')),
+      expect: () => <DigitScannerState>[
+        const DigitScannerState(
+            qrCodes: ['(manual)ABC123'], error: '1 QR code(s) rejected.'),
+      ],
+    );
   });
 }
