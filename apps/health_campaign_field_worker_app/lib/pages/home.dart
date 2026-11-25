@@ -1736,8 +1736,7 @@ class _HomePageState extends LocalizedState<HomePage> {
       return e.code;
     });
 
-    if (!(roles.contains(RolesType.distributor.toValue()) ||
-        roles.contains(RolesType.registrar.toValue()))) {
+    if (!roles.contains(RolesType.distributor.toValue())) {
       skipProgressBar = true;
     }
 
