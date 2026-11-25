@@ -1398,18 +1398,6 @@ final dynamic sampleInventoryFlows = {
               }
             },
             {
-              "actionType": "CREATE_EVENT",
-              "properties": {
-                "entity": "STOCK",
-                "onError": [
-                  {
-                    "actionType": "SHOW_TOAST",
-                    "properties": {"message": "Failed to create receipt."}
-                  }
-                ]
-              }
-            },
-            {
               "actionType": "UPDATE_EVENT",
               "properties": {
                 "entity": "StockModel",
@@ -1835,18 +1823,6 @@ final dynamic sampleInventoryFlows = {
             ],
             "configName": "stockReceipt",
             "forceCreate": true
-          }
-        },
-        {
-          "actionType": "CREATE_EVENT",
-          "properties": {
-            "entity": "STOCK",
-            "onError": [
-              {
-                "actionType": "SHOW_TOAST",
-                "properties": {"message": "Failed to create receipt."}
-              }
-            ]
           }
         },
         {
