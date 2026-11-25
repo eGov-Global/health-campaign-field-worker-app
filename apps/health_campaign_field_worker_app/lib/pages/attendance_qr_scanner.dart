@@ -356,7 +356,15 @@ class AttendanceScannerPageState extends DigitScannerPageState {
                                             form.control(_reasonKey).value),
                                         code: form.control(_reasonKey).value)
                                     : const DropdownItem(name: '', code: ''),
-                            items: reasonList,
+                            // Translate by code, as the selected option
+                            // does, so the list matches the selection.
+                            items: reasonList
+                                .map((reason) => DropdownItem(
+                                      name: localizations
+                                          .translate(reason.code),
+                                      code: reason.code,
+                                    ))
+                                .toList(),
                             onSelect: (value) {
                               form.control(_reasonKey).markAsTouched();
                               form.control(_reasonKey).value = value.code;
