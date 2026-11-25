@@ -676,6 +676,7 @@ final dynamic sampleBednetFlows = {
                 "isGS1": false,
                 "scanType": "qr",
                 "fieldName": "beneficiaryTag",
+                "manualEntry": false,
                 "onSuccess": [
                   {
                     "actionType": "SEARCH_EVENT",
