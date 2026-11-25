@@ -63,5 +63,20 @@ void main() {
           isTrue);
       expect(const DigitScannerPage().prefixManualQrCodes, isFalse);
     });
+
+    test('offers manual entry unless the field opts out', () {
+      const optOut = [ScannerValidation(type: 'manualEntry', value: false)];
+      const optOutString = [
+        ScannerValidation(type: 'manualEntry', value: 'false')
+      ];
+      const unrelated = [ScannerValidation(type: 'isGS1', value: false)];
+
+      expect(optOut.manualEntry, isFalse);
+      expect(optOutString.manualEntry, isFalse);
+      expect(unrelated.manualEntry, isTrue);
+      expect(const DigitScannerPage(validations: optOut).allowManualEntry,
+          isFalse);
+      expect(const DigitScannerPage().allowManualEntry, isTrue);
+    });
   });
 }

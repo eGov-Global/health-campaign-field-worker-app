@@ -74,6 +74,17 @@ extension ScannerValidationListExt on List<ScannerValidation>? {
     return false;
   }
 
+  /// Whether the "Enter Manual Code" option is offered on the scan screen.
+  /// Defaults to true; a `manualEntry` validation with value false hides it
+  /// so the code can only be captured with the camera.
+  bool get manualEntry {
+    final validation = this?.firstWhereOrNull((v) => v.type == 'manualEntry');
+    final value = validation?.value;
+    if (value is bool) return value;
+    if (value is String) return value.toLowerCase() != 'false';
+    return true;
+  }
+
   /// Gets the regex pattern for validation
   String? get pattern {
     final validation = this?.firstWhereOrNull((v) => v.type == 'pattern');

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:digit_scanner/blocs/scanner.dart';
+import 'package:digit_scanner/models/scanner_validation.dart';
 import 'package:digit_scanner/pages/qr_scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,6 +27,7 @@ import 'action_executor.dart';
 ///     "singleValue": true,        // Single scan mode
 ///     "quantity": 1,              // Number of items to scan
 ///     "isGS1code": false,         // GS1 barcode mode
+///     "manualEntry": true,        // false hides "Enter Manual Code"
 ///     "onSuccess": [...],         // Actions to execute after successful scan
 ///     "onError": [...]            // Actions to execute on error
 ///   }
@@ -57,6 +59,10 @@ class OpenScannerExecutor extends ActionExecutor {
     // reference them as `{{key}}` directly. Backward compatible — without
     // the flag, the scanned value is stored only at `fieldName` as before.
     final parseJson = properties['parseJson'] == true;
+    // When false, the scanner hides its "Enter Manual Code" option so the
+    // code can only be captured with the camera. Defaults to true.
+    final manualEntry =
+        properties['manualEntry']?.toString().toLowerCase() != 'false';
 
     // Get onSuccess and onError actions
     final onSuccessActions = properties['onSuccess'] as List<dynamic>?;
@@ -88,6 +94,9 @@ class OpenScannerExecutor extends ActionExecutor {
             quantity: quantity,
             isGS1code: isGS1code,
             singleValue: singleValue,
+            validations: [
+              ScannerValidation(type: 'manualEntry', value: manualEntry),
+            ],
           ),
           settings: const RouteSettings(name: '/qr-scanner'),
         ),

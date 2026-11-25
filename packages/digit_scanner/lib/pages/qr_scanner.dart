@@ -109,6 +109,10 @@ class DigitScannerPage extends LocalizedStatefulWidget {
   /// validation). GS1 manual entries are always prefixed.
   bool get prefixManualQrCodes => validations.manualEntryPrefix;
 
+  /// Whether the "Enter Manual Code" option is offered (opt-out `manualEntry`
+  /// validation with value false). Defaults to true.
+  bool get allowManualEntry => validations.manualEntry;
+
   /// Gets the scan limit exceeded message from validations
   String? get scanLimitMessage => validations?.scanLimitMessage;
 
@@ -534,9 +538,11 @@ class DigitScannerPageState extends LocalizedState<DigitScannerPage>
       null;
 
   /// Subclass hook: whether to show the "Enter Manual Code" link on the
-  /// scan screen. Default: true. Attendance overrides to false because it
-  /// exposes its own manual-entry affordance via [extraManualEntryContent].
-  bool get showEnterManualCodeLink => true;
+  /// scan screen. Default: [DigitScannerPage.allowManualEntry] (true unless a
+  /// `manualEntry: false` validation is passed). Attendance overrides to
+  /// false because it exposes its own manual-entry affordance via
+  /// [extraManualEntryContent].
+  bool get showEnterManualCodeLink => widget.allowManualEntry;
 
   @override
   void dispose() {
