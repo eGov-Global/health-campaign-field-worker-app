@@ -2578,7 +2578,8 @@ final dynamic sampleBednetFlows = {
                   "type": "scanCountMatch",
                   "value": "resourceCard.quantityDistributed",
                   "message": "SCANNED_RESOURCE_COUNT_MISMATCH"
-                }
+                },
+                {"type": "manualEntryPrefix", "value": true}
               ],
               "errorMessage": "",
               "includeInForm": true,
