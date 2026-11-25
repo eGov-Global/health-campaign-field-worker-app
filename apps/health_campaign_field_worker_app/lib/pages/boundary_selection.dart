@@ -232,9 +232,17 @@ class _BoundarySelectionPageState
         .toList()
         .isNotEmpty;
 
-    // Registrars and distributors must select every boundary level; for
-    // other roles only the first level is mandatory.
-    bool isAllBoundariesRequired = isRegistrar || isDistributor;
+    bool isTeamSupervisor = context.loggedInUserRoles
+        .where(
+          (role) => role.code == RolesType.teamSupervisor.toValue(),
+        )
+        .toList()
+        .isNotEmpty;
+
+    // Registrars, distributors and team supervisors must select every
+    // boundary level; for other roles only the first level is mandatory.
+    bool isAllBoundariesRequired =
+        isRegistrar || isDistributor || isTeamSupervisor;
 
     return PopScope(
       canPop: shouldPop,
