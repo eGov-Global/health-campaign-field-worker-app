@@ -93,6 +93,8 @@ class MasterEnumsMapper extends EnumMapper<MasterEnums> {
         return MasterEnums.projectTypes;
       case "FormConfig":
         return MasterEnums.formConfig;
+      case "FACILITY_BOUNDARY_RELATIONSHIP":
+        return MasterEnums.facilityBoundaryRelationship;
       default:
         throw MapperException.unknownEnumValue(value);
     }
@@ -169,6 +171,8 @@ class MasterEnumsMapper extends EnumMapper<MasterEnums> {
         return "projectTypes";
       case MasterEnums.formConfig:
         return "FormConfig";
+      case MasterEnums.facilityBoundaryRelationship:
+        return "FACILITY_BOUNDARY_RELATIONSHIP";
     }
   }
 }

@@ -107,6 +107,9 @@ class AppConfiguration {
 
   @Name('STOCK_THRESHOLD_CONFIG')
   StockThresholdConfig? stockThresholdConfig;
+
+  @Name('FACILITY_BOUNDARY_RELATIONSHIP')
+  List<FacilityBoundaryRelationshipConfig>? facilityBoundaryRelationship;
 }
 
 @embedded
@@ -338,4 +341,15 @@ class StockThresholdConfig {
   @Name('MAX_THRESHOLD')
   late double maxThreshold; // Above this = green
 // Between min and max = blue
+}
+
+@embedded
+class FacilityBoundaryRelationshipConfig {
+  late String boundaryType;
+  late int order;
+  // Null/empty on legacy (pre-multi-hierarchy) MDMS data; otherwise must
+  // equal the project's additionalDetails.hierarchyType verbatim.
+  String? hierarchyType;
+  late String parentBoundaryType;
+  late List<String> childBoundaryTypes;
 }

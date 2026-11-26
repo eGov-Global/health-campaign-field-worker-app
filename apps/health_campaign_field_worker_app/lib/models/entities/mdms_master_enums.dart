@@ -72,5 +72,7 @@ enum MasterEnums {
   @MappableValue("projectTypes")
   projectTypes,
   @MappableValue("FormConfig")
-  formConfig
+  formConfig,
+  @MappableValue("FACILITY_BOUNDARY_RELATIONSHIP")
+  facilityBoundaryRelationship
 }

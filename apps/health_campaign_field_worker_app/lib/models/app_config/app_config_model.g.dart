@@ -154,6 +154,11 @@ _$HCMWrapperModelImpl _$$HCMWrapperModelImplFromJson(
       transitPostType: (json['TRANSIT_POST_TYPE'] as List<dynamic>?)
           ?.map((e) => TransitPostType.fromJson(e as Map<String, dynamic>))
           .toList(),
+      facilityBoundaryRelationship: (json['FACILITY_BOUNDARY_RELATIONSHIP']
+              as List<dynamic>?)
+          ?.map((e) =>
+              FacilityBoundaryRelationship.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
 
 Map<String, dynamic> _$$HCMWrapperModelImplToJson(
@@ -186,6 +191,7 @@ Map<String, dynamic> _$$HCMWrapperModelImplToJson(
       'REFUSAL_REASONS': instance.refusalReasons,
       'FIREBASE_CONFIG': instance.firebaseConfig,
       'TRANSIT_POST_TYPE': instance.transitPostType,
+      'FACILITY_BOUNDARY_RELATIONSHIP': instance.facilityBoundaryRelationship,
     };
 
 _$AppConfigSecondaryWrapperModelImpl
@@ -617,4 +623,44 @@ Map<String, dynamic> _$$FirebaseConfigImplToJson(
     <String, dynamic>{
       'enableCrashlytics': instance.enableCrashlytics,
       'enableAnalytics': instance.enableAnalytics,
+    };
+
+_$FacilityBoundaryRelationshipImpl _$$FacilityBoundaryRelationshipImplFromJson(
+        Map<String, dynamic> json) =>
+    _$FacilityBoundaryRelationshipImpl(
+      boundaryType: json['boundaryType'] as String,
+      order: (json['order'] as num).toInt(),
+      hierarchyType: json['hierarchyType'] as String?,
+      parent: json['parent'] == null
+          ? null
+          : FacilityBoundaryRelationshipRef.fromJson(
+              json['parent'] as Map<String, dynamic>),
+      children: (json['children'] as List<dynamic>?)
+          ?.map((e) => FacilityBoundaryRelationshipRef.fromJson(
+              e as Map<String, dynamic>))
+          .toList(),
+    );
+
+Map<String, dynamic> _$$FacilityBoundaryRelationshipImplToJson(
+        _$FacilityBoundaryRelationshipImpl instance) =>
+    <String, dynamic>{
+      'boundaryType': instance.boundaryType,
+      'order': instance.order,
+      'hierarchyType': instance.hierarchyType,
+      'parent': instance.parent,
+      'children': instance.children,
+    };
+
+_$FacilityBoundaryRelationshipRefImpl
+    _$$FacilityBoundaryRelationshipRefImplFromJson(Map<String, dynamic> json) =>
+        _$FacilityBoundaryRelationshipRefImpl(
+          boundaryType: json['boundaryType'] as String,
+          order: (json['order'] as num).toInt(),
+        );
+
+Map<String, dynamic> _$$FacilityBoundaryRelationshipRefImplToJson(
+        _$FacilityBoundaryRelationshipRefImpl instance) =>
+    <String, dynamic>{
+      'boundaryType': instance.boundaryType,
+      'order': instance.order,
     };

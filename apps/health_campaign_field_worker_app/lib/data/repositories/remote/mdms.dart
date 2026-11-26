@@ -63,7 +63,8 @@ class MdmsRepository {
   ) async {
     try {
       final String module = ModuleEnums.serviceRegistry.toValue() as String;
-      final String master = MasterEnums.serviceRegistryMaster.toValue() as String;
+      final String master =
+          MasterEnums.serviceRegistryMaster.toValue() as String;
 
       final dataList = await _searchV2(
         apiEndPoint,
@@ -148,6 +149,7 @@ class MdmsRepository {
           MasterEnums.searchHouseHoldFilters.toValue(),
           MasterEnums.transitPostType.toValue(),
           MasterEnums.searchCLFFilters.toValue(),
+          MasterEnums.facilityBoundaryRelationship.toValue(),
           MasterEnums.deviceChangeReasons.toValue(),
           MasterEnums.singleUserLogin.toValue(),
         ],
@@ -165,9 +167,8 @@ class MdmsRepository {
 
       for (final entry in schemaCodes.entries) {
         final moduleName = entry.key;
-        final moduleMap =
-            mdmsRes.putIfAbsent(moduleName, () => <String, dynamic>{})
-                as Map<String, dynamic>;
+        final moduleMap = mdmsRes.putIfAbsent(
+            moduleName, () => <String, dynamic>{}) as Map<String, dynamic>;
 
         for (final masterName in entry.value) {
           final dataList = await _searchV2(
@@ -175,7 +176,10 @@ class MdmsRepository {
             tenantId: tenantId,
             schemaCode: '$moduleName.$masterName',
           );
-          moduleMap[masterName] = dataList;
+          moduleMap[masterName] =
+              masterName == MasterEnums.facilityBoundaryRelationship.toValue()
+                  ? _sanitizeFacilityBoundaryRelationship(dataList)
+                  : dataList;
         }
       }
 
@@ -188,6 +192,32 @@ class MdmsRepository {
       );
       rethrow;
     }
+  }
+
+  /// FACILITY_BOUNDARY_RELATIONSHIP is optional (project selection falls back
+  /// to the boundary tree without it), so one malformed record must not fail
+  /// the whole app-config parse and leave the app stuck at initialization.
+  /// Wraps a single-object `children` in a list and drops entries that still
+  /// don't parse.
+  List<dynamic> _sanitizeFacilityBoundaryRelationship(List<dynamic> entries) {
+    final valid = <dynamic>[];
+    for (final entry in entries) {
+      if (entry is! Map<String, dynamic>) continue;
+      final normalized = Map<String, dynamic>.from(entry);
+      final children = normalized['children'];
+      if (children is Map<String, dynamic>) normalized['children'] = [children];
+      try {
+        app_configuration.FacilityBoundaryRelationship.fromJson(normalized);
+        valid.add(normalized);
+      } catch (e) {
+        AppLogger.instance.error(
+          title: 'MDMS Repository',
+          message: 'Skipping malformed FACILITY_BOUNDARY_RELATIONSHIP entry '
+              '"${normalized['boundaryType']}": $e',
+        );
+      }
+    }
+    return valid;
   }
 
   /// Independent MDMS call for the face-auth config (hcm.FACE_AUTH_CONFIG).
@@ -370,8 +400,7 @@ class MdmsRepository {
       ..syncTrigger = appConfig?.syncTrigger
       ..tenantId = appConfig?.tenantId
       ..maxRadius = appConfig?.maxRadius
-      ..boundaryLastLevelMaxSelection =
-           appConfig?.boundaryLastLevelMaxSelection
+      ..boundaryLastLevelMaxSelection = appConfig?.boundaryLastLevelMaxSelection
       // TODO: Populate stockThresholdConfig from MDMS when available
       ..stockThresholdConfig = (StockThresholdConfig()
         ..minThreshold = 0
@@ -460,7 +489,8 @@ class MdmsRepository {
       ..header = privacyPolicyConfig?.firstOrNull?.header ?? ''
       ..module = privacyPolicyConfig?.firstOrNull?.module ?? ''
       ..active = privacyPolicyConfig?.firstOrNull?.active
-      ..contents = (privacyPolicyConfig?.firstOrNull?.contents ?? []).map((cont) {
+      ..contents =
+          (privacyPolicyConfig?.firstOrNull?.contents ?? []).map((cont) {
         final content = Content()
           ..header = cont.header
           ..descriptions = (cont.descriptions ?? []).map((d) {
@@ -507,7 +537,6 @@ class MdmsRepository {
 
       return singleUserLogin;
     }).toList();
-
 
     final List<RelationShipTypeOptions>? relationShipTypes =
         element?.relationShipTypeOptions.map((element) {
@@ -663,6 +692,19 @@ class MdmsRepository {
         ..active = e.active;
 
       return reasonTypes;
+    }).toList();
+
+    appConfiguration.facilityBoundaryRelationship =
+        result.hcmWrapperModel?.facilityBoundaryRelationship?.map((e) {
+      final boundaryRelConfig = FacilityBoundaryRelationshipConfig()
+        ..boundaryType = e.boundaryType
+        ..order = e.order
+        ..hierarchyType = e.hierarchyType
+        ..parentBoundaryType = e.parent?.boundaryType ?? ''
+        ..childBoundaryTypes =
+            e.children?.map((c) => c.boundaryType).toList() ?? [];
+
+      return boundaryRelConfig;
     }).toList();
 
     isar.writeTxnSync(() {
