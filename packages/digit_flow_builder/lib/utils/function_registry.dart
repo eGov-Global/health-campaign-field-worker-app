@@ -1965,6 +1965,42 @@ void initializeFunctionRegistry() {
     return age.years * 12 + age.months;
   });
 
+  /// Registers a function to calculate age in completed years from a date
+  /// of birth.
+  ///
+  /// - **Function Name**: `'calculateAgeInYears'`
+  /// - **Arguments**: A list where the first element is the date of birth: a
+  ///   `DateTime`, an epoch-millisecond timestamp (int or numeric string), an
+  ///   ISO date string (`yyyy-MM-dd`) or a `dd/MM/yyyy` / `dd-MM-yyyy` string.
+  /// - **Returns**: The age in years as an integer, or null when the date of
+  ///   birth is missing or can't be parsed, so callers can skip the value
+  ///   instead of storing a misleading 0.
+  FunctionRegistry.register('calculateAgeInYears', (args, stateData) {
+    if (args.isEmpty) return null;
+
+    final rawValue = args.first;
+    DateTime? dob;
+    if (rawValue is DateTime) {
+      dob = rawValue;
+    } else if (rawValue is int) {
+      dob = DateTime.fromMillisecondsSinceEpoch(rawValue);
+    } else if (rawValue is String && rawValue.trim().isNotEmpty) {
+      final value = rawValue.trim();
+      final timestamp = int.tryParse(value);
+      if (timestamp != null) {
+        dob = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      } else if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(value)) {
+        // ISO first: the dd-MM-yyyy parser below would misread it.
+        dob = DateTime.tryParse(value);
+      } else {
+        dob = DigitDateUtils.getFormattedDateToDateTime(value);
+      }
+    }
+
+    if (dob == null) return null;
+    return DigitDateUtils.calculateAge(dob).years;
+  });
+
   /// Registers a function to compute the referral button label based on symptom and checklist data.
   ///
   /// - **Function Name**: `'computeReferralButtonLabel'`

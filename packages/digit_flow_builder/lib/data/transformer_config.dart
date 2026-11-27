@@ -53,7 +53,14 @@ final jsonConfig = {
             "pregnantWomenCount": "householdDetails.pregnantWomenCount",
             "memberCount": "householdDetails.memberCount",
             "locality": "__context:selectedBoundaryCode",
-            "localityCode": "__context:selectedBoundaryCode"
+            "localityCode": "__context:selectedBoundaryCode",
+            // Household head (the beneficiaryDetails page registers the head).
+            // headAge is computed from the date of birth and passed in via the
+            // FETCH_TRANSFORMER_CONFIG action's data on create.
+            "headName": "beneficiaryDetails.nameOfIndividual",
+            "headAge": "__context:headAge",
+            "headGender": "beneficiaryDetails.gender",
+            "headMobileNumber": "beneficiaryDetails.phone"
           }
         }
       },
@@ -570,7 +577,13 @@ final jsonConfig = {
             "cycleIndex": "__context:cycleIndex",
             "deliveryStrategy": "__context:deliveryStrategy",
             "locality": "__context:selectedBoundaryCode",
-            "localityCode": "__context:selectedBoundaryCode"
+            "localityCode": "__context:selectedBoundaryCode",
+            // Household head, passed from householdOverview via navigation
+            // and the FETCH_TRANSFORMER_CONFIG action's data.
+            "headName": "__context:headName",
+            "headAge": "__context:headAge",
+            "headGender": "__context:headGender",
+            "headMobileNumber": "__context:headMobileNumber"
           },
           "clientAuditDetails": "__generate:clientAudit",
           "auditDetails": "__generate:audit"

@@ -1264,6 +1264,24 @@ final dynamic sampleBednetFlows = {
                   {
                     "key": "eligibleProductVariants",
                     "value": "{{contextData.0.eligibleProductVariants}}"
+                  },
+                  {
+                    "key": "headName",
+                    "value":
+                        "{{contextData.0.headIndividual.0.name.givenName}}"
+                  },
+                  {
+                    "key": "headAge",
+                    "value":
+                        "{{fn:calculateAgeInYears(contextData.0.headIndividual.0.dateOfBirth)}}"
+                  },
+                  {
+                    "key": "headGender",
+                    "value": "{{contextData.0.headIndividual.0.gender}}"
+                  },
+                  {
+                    "key": "headMobileNumber",
+                    "value": "{{contextData.0.headIndividual.0.mobileNumber}}"
                   }
                 ],
                 "name": "DELIVERY",
@@ -2297,7 +2315,14 @@ final dynamic sampleBednetFlows = {
                         "{{navigation.ProjectBeneficiaryClientReferenceId}}"
                   },
                   {"key": "cycleIndex", "value": "{{navigation.cycleIndex}}"},
-                  {"key": "doseIndex", "value": "{{navigation.doseIndex}}"}
+                  {"key": "doseIndex", "value": "{{navigation.doseIndex}}"},
+                  {"key": "headName", "value": "{{navigation.headName}}"},
+                  {"key": "headAge", "value": "{{navigation.headAge}}"},
+                  {"key": "headGender", "value": "{{navigation.headGender}}"},
+                  {
+                    "key": "headMobileNumber",
+                    "value": "{{navigation.headMobileNumber}}"
+                  }
                 ],
                 "onError": [
                   {
@@ -2562,7 +2587,14 @@ final dynamic sampleBednetFlows = {
                 "value": "{{navigation.ProjectBeneficiaryClientReferenceId}}"
               },
               {"key": "cycleIndex", "value": "{{navigation.cycleIndex}}"},
-              {"key": "doseIndex", "value": "{{navigation.doseIndex}}"}
+              {"key": "doseIndex", "value": "{{navigation.doseIndex}}"},
+              {"key": "headName", "value": "{{navigation.headName}}"},
+              {"key": "headAge", "value": "{{navigation.headAge}}"},
+              {"key": "headGender", "value": "{{navigation.headGender}}"},
+              {
+                "key": "headMobileNumber",
+                "value": "{{navigation.headMobileNumber}}"
+              }
             ],
             "onError": [
               {
@@ -2789,6 +2821,13 @@ final dynamic sampleBednetFlows = {
                         "properties": {
                           "message": "REGISTRATION_HOUSEHOLD_MESSAGE"
                         }
+                      }
+                    ],
+                    "data": [
+                      {
+                        "key": "headAge",
+                        "value":
+                            "{{fn:calculateAgeInYears(formData.beneficiaryDetails.dobPicker)}}"
                       }
                     ],
                     "configName": "beneficiaryRegistration"
@@ -3146,6 +3185,13 @@ final dynamic sampleBednetFlows = {
                         "properties": {
                           "message": "REGISTRATION_HOUSEHOLD_MESSAGE"
                         }
+                      }
+                    ],
+                    "data": [
+                      {
+                        "key": "headAge",
+                        "value":
+                            "{{fn:calculateAgeInYears(formData.beneficiaryDetails.dobPicker)}}"
                       }
                     ],
                     "configName": "beneficiaryRegistration"
@@ -3646,6 +3692,13 @@ final dynamic sampleBednetFlows = {
                         "properties": {
                           "message": "REGISTRATION_HOUSEHOLD_MESSAGE"
                         }
+                      }
+                    ],
+                    "data": [
+                      {
+                        "key": "headAge",
+                        "value":
+                            "{{fn:calculateAgeInYears(formData.beneficiaryDetails.dobPicker)}}"
                       }
                     ],
                     "configName": "beneficiaryRegistration"
@@ -4194,6 +4247,13 @@ final dynamic sampleBednetFlows = {
                   {
                     "actionType": "SHOW_TOAST",
                     "properties": {"message": "REGISTRATION_HOUSEHOLD_MESSAGE"}
+                  }
+                ],
+                "data": [
+                  {
+                    "key": "headAge",
+                    "value":
+                        "{{fn:calculateAgeInYears(formData.beneficiaryDetails.dobPicker)}}"
                   }
                 ],
                 "configName": "beneficiaryRegistration"
