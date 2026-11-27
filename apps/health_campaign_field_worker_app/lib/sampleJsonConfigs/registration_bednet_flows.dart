@@ -1,8 +1,4 @@
 final dynamic sampleBednetFlows = {
-  "id": "9d3a901b-d831-427b-8aeb-4bbda9ec2018",
-  "tenantId": "mz",
-  "schemaCode": "HCM-ADMIN-CONSOLE.FormConfigTemplate",
-  "uniqueIdentifier": "REGISTRATION.BEDNET",
   "name": "REGISTRATION",
   "flows": [
     {
@@ -676,7 +672,6 @@ final dynamic sampleBednetFlows = {
                 "isGS1": false,
                 "scanType": "qr",
                 "fieldName": "beneficiaryTag",
-                "manualEntry": false,
                 "onSuccess": [
                   {
                     "actionType": "SEARCH_EVENT",
@@ -695,6 +690,7 @@ final dynamic sampleBednetFlows = {
                   }
                 ],
                 "scanLimit": 1,
+                "manualEntry": false,
                 "singleValue": true
               }
             }
@@ -1852,22 +1848,10 @@ final dynamic sampleBednetFlows = {
             {
               "type": "string",
               "enums": [
-                {"code": "DEFAULT", "name": "DEFAULT"},
-                {
-                  "code": "217f2f61-559d-4c95-a691-97fae47b836a",
-                  "name":
-                      "OPTION_217f2f61-559d-4c95-a691-97fae47b836a_1793378815773"
-                },
-                {
-                  "code": "eb39a35a-2e4d-4ce1-84ed-1de3d9ddfb6b",
-                  "name":
-                      "OPTION_eb39a35a-2e4d-4ce1-84ed-1de3d9ddfb6b_1793378819223"
-                },
-                {
-                  "code": "6b6df723-487c-417d-8493-a27a370146b5",
-                  "name":
-                      "OPTION_6b6df723-487c-417d-8493-a27a370146b5_1793378826384"
-                }
+                {"code": "DEFAULT", "name": "WITHOUT_PIECE"},
+                {"code": "CNI", "name": "CNI"},
+                {"code": "PASSPORT", "name": "PASSPORT"},
+                {"code": "CNAMGS", "name": "CNAMGS"}
               ],
               "label":
                   "APPONE_REGISTRATION_BENEFICIARYDETAILS_label_identifiers_addmember",
@@ -1891,65 +1875,13 @@ final dynamic sampleBednetFlows = {
               "errorMessage": "REGISTRATION_ADD_MEMBER_identifiers_ERROR",
               "isMultiSelect": false,
               "dropDownOptions": [
-                {"code": "DEFAULT", "name": "DEFAULT"},
-                {
-                  "code": "217f2f61-559d-4c95-a691-97fae47b836a",
-                  "name":
-                      "OPTION_217f2f61-559d-4c95-a691-97fae47b836a_1793378815773"
-                },
-                {
-                  "code": "eb39a35a-2e4d-4ce1-84ed-1de3d9ddfb6b",
-                  "name":
-                      "OPTION_eb39a35a-2e4d-4ce1-84ed-1de3d9ddfb6b_1793378819223"
-                },
-                {
-                  "code": "6b6df723-487c-417d-8493-a27a370146b5",
-                  "name":
-                      "OPTION_6b6df723-487c-417d-8493-a27a370146b5_1793378826384"
-                }
+                {"code": "DEFAULT", "name": "WITHOUT_PIECE"},
+                {"code": "CNI", "name": "CNI"},
+                {"code": "PASSPORT", "name": "PASSPORT"},
+                {"code": "CNAMGS", "name": "CNAMGS"}
               ],
               "required.message":
                   "APPONE_REGISTRATION_BENEFICIARYDETAILS_label_idpopulator_mandatory_message_addmember"
-            },
-            {
-              "id": "62289e61-c516-412b-8cc2-9c5cb133c866",
-              "type": "string",
-              "label":
-                  "CMP-2026-10-30-001379_ADD_MEMBER_ADD_MEMBER.BENEFICIARYDETAILS_89F8627F-4130-4A29-B9AA-1B3845E9FD24",
-              "order": 3,
-              "value": "",
-              "active": true,
-              "format": "text",
-              "hidden": false,
-              "tooltip": "",
-              "helpText": "",
-              "infoText": "",
-              "jsonPath": "field_1793379002574",
-              "readOnly": false,
-              "required": true,
-              "fieldName":
-                  "numéro_d'identification_cmp-2026-10-30-001379_add_member_beneficiarydetails_7",
-              "mandatory": false,
-              "deleteFlag": true,
-              "innerLabel": "",
-              "schemaCode": null,
-              "systemDate": false,
-              "validations": [
-                {
-                  "type": "required",
-                  "value": true,
-                  "message": "FIELD_REQUIRED_MESSAGE_1793379100901"
-                }
-              ],
-              "errorMessage": "",
-              "required.message": "FIELD_REQUIRED_MESSAGE_1793379100901",
-              "visibilityCondition": {
-                "expression": [
-                  {"condition": "beneficiaryDetails.identifiers==CNI"},
-                  {"condition": "beneficiaryDetails.identifiers==PASSPORT"},
-                  {"condition": "beneficiaryDetails.identifiers==CNAMGS"}
-                ]
-              }
             },
             {
               "type": "string",
@@ -3872,22 +3804,10 @@ final dynamic sampleBednetFlows = {
             {
               "type": "string",
               "enums": [
-                {"code": "DEFAULT", "name": "DEFAULT"},
-                {
-                  "code": "2bfe903a-1601-483e-b46a-d8f644abd7c8",
-                  "name":
-                      "OPTION_2bfe903a-1601-483e-b46a-d8f644abd7c8_1793358024169"
-                },
-                {
-                  "code": "269bf356-5d57-49c7-bdc5-e68b8643a750",
-                  "name":
-                      "OPTION_269bf356-5d57-49c7-bdc5-e68b8643a750_1793358032429"
-                },
-                {
-                  "code": "a1f84bac-4cde-4c3b-8782-a3a6fc444c7c",
-                  "name":
-                      "OPTION_a1f84bac-4cde-4c3b-8782-a3a6fc444c7c_1793358044425"
-                }
+                {"code": "DEFAULT", "name": "WITHOUT_PIECE"},
+                {"code": "CNI", "name": "CNI"},
+                {"code": "PASSPORT", "name": "PASSPORT"},
+                {"code": "CNAMGS", "name": "CNAMGS"}
               ],
               "label":
                   "APPONE_REGISTRATION_BENEFICIARYDETAILS_label_identifiers",
@@ -3912,66 +3832,12 @@ final dynamic sampleBednetFlows = {
               "includeInForm": true,
               "isMultiSelect": false,
               "dropDownOptions": [
-                {"code": "DEFAULT", "name": "DEFAULT"},
-                {
-                  "code": "2bfe903a-1601-483e-b46a-d8f644abd7c8",
-                  "name":
-                      "OPTION_2bfe903a-1601-483e-b46a-d8f644abd7c8_1793358024169"
-                },
-                {
-                  "code": "269bf356-5d57-49c7-bdc5-e68b8643a750",
-                  "name":
-                      "OPTION_269bf356-5d57-49c7-bdc5-e68b8643a750_1793358032429"
-                },
-                {
-                  "code": "a1f84bac-4cde-4c3b-8782-a3a6fc444c7c",
-                  "name":
-                      "OPTION_a1f84bac-4cde-4c3b-8782-a3a6fc444c7c_1793358044425"
-                }
+                {"code": "DEFAULT", "name": "WITHOUT_PIECE"},
+                {"code": "CNI", "name": "CNI"},
+                {"code": "PASSPORT", "name": "PASSPORT"},
+                {"code": "CNAMGS", "name": "CNAMGS"}
               ],
               "required.message": "FIELD_REQUIRED_MESSAGE_1793358101790"
-            },
-            {
-              "id": "482f3d23-14ce-4f1c-9179-c5d91c645495",
-              "type": "string",
-              "label":
-                  "CMP-2026-10-30-001379_HOUSEHOLD_HOUSEHOLD.BENEFICIARYDETAILS_F5F40B94-CAAD-471C-A03F-B0426FF894F2",
-              "order": 4,
-              "value": "",
-              "active": true,
-              "format": "text",
-              "hidden": false,
-              "tooltip": "",
-              "helpText": "",
-              "infoText": "",
-              "jsonPath": "field_1793358150425",
-              "readOnly": false,
-              "required": true,
-              "fieldName":
-                  "numéro_d'identification_cmp-2026-10-30-001379_household_beneficiarydetails_10",
-              "mandatory": false,
-              "deleteFlag": true,
-              "innerLabel": "",
-              "schemaCode": null,
-              "systemDate": false,
-              "lengthRange": {"maxLength": 20},
-              "validations": [
-                {
-                  "type": "required",
-                  "value": true,
-                  "message": "FIELD_REQUIRED_MESSAGE_1793358186538"
-                },
-                {"type": "maxLength", "value": 20, "message": ""}
-              ],
-              "errorMessage": "",
-              "required.message": "FIELD_REQUIRED_MESSAGE_1793358186538",
-              "visibilityCondition": {
-                "expression": [
-                  {"condition": "beneficiaryDetails.identifiers==CNAMGS"},
-                  {"condition": "beneficiaryDetails.identifiers==CNI"},
-                  {"condition": "beneficiaryDetails.identifiers==PASSPORT"}
-                ]
-              }
             },
             {
               "type": "string",
@@ -4475,16 +4341,9 @@ final dynamic sampleBednetFlows = {
   ],
   "order": 1,
   "active": true,
-  "project": "MR-DN",
-  "version": 1,
+  "project": "CMP-2026-10-30-001379",
+  "version": 5,
   "disabled": false,
   "isSelected": true,
-  "initialPage": "searchBeneficiary",
-  "isActive": true,
-  "auditDetails": {
-    "createdBy": "b43b260c-f620-45d3-a43f-f53148f87f15",
-    "lastModifiedBy": "f4e90853-80b7-47cc-91e7-f8cd5ec00e20",
-    "createdTime": 1766988969631,
-    "lastModifiedTime": 1773055228737
-  }
+  "initialPage": "searchBeneficiary"
 };
