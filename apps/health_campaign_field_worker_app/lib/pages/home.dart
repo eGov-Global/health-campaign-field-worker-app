@@ -3358,7 +3358,7 @@ class _HomePageState extends LocalizedState<HomePage> {
       filteredLabels.remove(i18.home.summaryReportLabel);
     }
 
-    if (envConfig.variables.envType == EnvType.demo && kReleaseMode) {
+    if (envConfig.variables.envType == EnvType.prod && kReleaseMode) {
       filteredLabels.remove(i18.home.db);
     }
 
