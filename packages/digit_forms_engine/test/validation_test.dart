@@ -172,4 +172,69 @@ void main() {
       expect(countScannedCodes('01:123|21:A;01:123|21:B'), 2);
     });
   });
+
+  group('idPopulator ID number', () {
+    const idSchema = PropertySchema(
+      type: PropertySchemaType.string,
+      format: PropertySchemaFormat.idPopulator,
+    );
+
+    // Mirrors the page form: the field plus the idType control the widget
+    // registers. The field holds "<idType>, <idNumber>" or null.
+    FormGroup buildForm({String? idType, String? identifiers}) {
+      final form = FormGroup({
+        'identifiers': FormControl<String>(
+          value: identifiers,
+          validators: buildValidators(idSchema),
+        ),
+        idPopulatorTypeKey: FormControl<String>(value: idType),
+      });
+      form.control('identifiers').updateValueAndValidity();
+      return form;
+    }
+
+    test('requires the number once a real ID type is picked', () {
+      final form = buildForm(idType: 'CNI');
+      final field = form.control('identifiers');
+      expect(field.hasError(idNumberRequiredErrorKey), isTrue);
+
+      field.value = 'CNI, 12345';
+      expect(field.valid, isTrue);
+
+      field.value = null;
+      expect(field.hasError(idNumberRequiredErrorKey), isTrue);
+    });
+
+    test('does not require a number for the DEFAULT (no ID) type', () {
+      expect(buildForm(idType: 'DEFAULT').control('identifiers').valid,
+          isTrue);
+    });
+
+    test('skips the check before the widget registers the ID type', () {
+      final form = FormGroup({
+        'identifiers':
+            FormControl<String>(validators: buildValidators(idSchema)),
+      });
+      form.control('identifiers').updateValueAndValidity();
+      expect(form.control('identifiers').valid, isTrue);
+    });
+
+    test('catches a switch to a real ID type once re-validated', () {
+      final form = buildForm(idType: 'DEFAULT');
+      final field = form.control('identifiers');
+      expect(field.valid, isTrue);
+
+      // null -> null does not re-run validators on its own.
+      form.control(idPopulatorTypeKey).value = 'CNI';
+      field.value = null;
+      expect(field.valid, isTrue);
+
+      field.updateValueAndValidity();
+      expect(field.hasError(idNumberRequiredErrorKey), isTrue);
+    });
+
+    test('is re-validated on submit as a cross-field field', () {
+      expect(hasCrossFieldValidation(idSchema), isTrue);
+    });
+  });
 }

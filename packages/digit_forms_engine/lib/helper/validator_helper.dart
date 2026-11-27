@@ -229,7 +229,36 @@ List<Validator<T>> buildValidators<T>(PropertySchema schema,
     }
   }
 
+  if (schema.format == PropertySchemaFormat.idPopulator) {
+    validators
+        .add(Validators.delegate(idNumberRequiredValidator) as Validator<T>);
+  }
+
   return validators;
+}
+
+/// Control the idPopulator widget registers next to its field to hold the
+/// selected ID type.
+const String idPopulatorTypeKey = 'idType';
+
+/// ID type meaning "no ID document"; it needs no ID number.
+const String idPopulatorDefaultType = 'DEFAULT';
+
+/// Error key set on an idPopulator field whose ID number is missing.
+const String idNumberRequiredErrorKey = 'idNumberRequired';
+
+/// An idPopulator field holds "<idType>, <idNumber>", or null while no
+/// number has been entered. Once an ID type other than
+/// [idPopulatorDefaultType] is picked, the ID number is required.
+Map<String, dynamic>? idNumberRequiredValidator(
+    AbstractControl<dynamic> control) {
+  final form = control.parent;
+  if (form is! FormGroup || !form.contains(idPopulatorTypeKey)) return null;
+  final idType =
+      form.control(idPopulatorTypeKey).value?.toString().trim() ?? '';
+  if (idType.isEmpty || idType == idPopulatorDefaultType) return null;
+  final value = control.value?.toString().trim() ?? '';
+  return value.isEmpty ? {idNumberRequiredErrorKey: true} : null;
 }
 
 /// Rule types whose result depends on another field's value. Their cached
@@ -237,8 +266,10 @@ List<Validator<T>> buildValidators<T>(PropertySchema schema,
 /// submit.
 const Set<String> _crossFieldValidationTypes = {'scanCountMatch'};
 
-/// Whether [schema] has a rule that reads another field's value.
+/// Whether [schema] has a rule that reads another field's value. An
+/// idPopulator field always does: its ID-number check reads the ID type.
 bool hasCrossFieldValidation(PropertySchema? schema) {
+  if (schema?.format == PropertySchemaFormat.idPopulator) return true;
   return schema?.validations
           ?.any((rule) => _crossFieldValidationTypes.contains(rule.type)) ??
       false;

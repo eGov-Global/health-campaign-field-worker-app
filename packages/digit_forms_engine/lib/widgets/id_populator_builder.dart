@@ -25,13 +25,21 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
   @override
   Widget build(BuildContext context) {
     const idKey = 'idNumber';
-    const idTypeKey = 'idType';
+    const idTypeKey = idPopulatorTypeKey;
     const idAutoFilledKey = 'idAutoFilled';
     const beneficiaryIdType = 'UNIQUE_BENEFICIARY_ID';
-    const defaultIdType = 'DEFAULT';
+    const defaultIdType = idPopulatorDefaultType;
 
     final loc = FormLocalization.of(context);
     final validationMessages = buildValidationMessages(validations, loc);
+    // Error from idNumberRequiredValidator: reuse the field's own required
+    // message when configured, else the common one.
+    validationMessages.putIfAbsent(
+      idNumberRequiredErrorKey,
+      () =>
+          validationMessages['required'] ??
+          (_) => loc.translate('CORE_COMMON_REQUIRED'),
+    );
 
     final defaultValues = context.read<Map<String, dynamic>>();
     final identifiers = defaultValues['availableIDs'];
@@ -180,13 +188,17 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
       }
     }
 
+    /// The ID-number check reads the ID type. Setting the field to the value
+    /// it already holds (e.g. null -> null when switching type) skips
+    /// validation, so re-check it after every type change.
+    void revalidateIdNumber() {
+      form.control(formControlName).updateValueAndValidity();
+    }
+
     final isIdTypeMissing =
         (form.control(idTypeKey).value?.toString().trim().isEmpty ?? true);
     final filteredIdTypeOptions =
         (enums ?? []).where((e) => e.code != beneficiaryIdType).toList();
-
-    final isIdNumberMissing =
-        (form.control(idKey).value?.toString().trim().isEmpty ?? true);
 
     return Column(
       children: [
@@ -239,6 +251,7 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
                 //   3. Blank the number field.
                 if (value.code == defaultIdType) {
                   applyDefaultBeneficiarySelection();
+                  revalidateIdNumber();
                   return;
                 }
 
@@ -269,10 +282,12 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
                   form.control(idAutoFilledKey).value = false;
                   form.control(formControlName).value = null;
                 }
+                revalidateIdNumber();
               },
               onChange: (value) {
                 if (value.isEmpty) {
                   applyDefaultBeneficiarySelection();
+                  revalidateIdNumber();
                 }
               },
             ),
@@ -295,6 +310,10 @@ class JsonSchemaIdPopulatorBuilder extends JsonSchemaBuilder<int> {
               // can't type an arbitrary value against a pool-sourced type.
               final isPoolSourcedType =
                   form.control(idTypeKey).value == 'UNIQUE_BENEFICIARY_ID';
+              // Read here, not in the outer build, so it follows typing.
+              final isIdNumberMissing =
+                  (form.control(idKey).value?.toString().trim().isEmpty ??
+                      true);
               return ReactiveWrapperField(
                 formControlName: formControlName,
                 validationMessages: validationMessages,
